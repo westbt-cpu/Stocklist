@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://world.openfoodfacts.org https://api.upcitemdb.com https://go-upc.com https://script.google.com https://api.anthropic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: https://api.qrserver.com; media-src 'self' blob:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com https://world.openfoodfacts.org https://api.upcitemdb.com https://go-upc.com https://script.google.com https://api.anthropic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: https://api.qrserver.com; media-src 'self' blob:;">
 <meta name="theme-color" content="#0d0e12">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -657,9 +657,9 @@ transition:transform .12s var(–spring),border-color .12s;
 
   <button id="cam-btn" class="idle" onclick="toggleCamera()">📷 Scan Barcode</button>
 
-  <div class="or-div">or enter manually</div>
+  <div class="or-div">or type a UPC or product name</div>
   <div class="upc-row">
-    <input type="text" id="upc-input" placeholder="UPC / barcode number..." inputmode="numeric"
+    <input type="text" id="upc-input" placeholder="Barcode number or product name..." inputmode="numeric"
       onkeydown="if(event.key==='Enter')lookupUPC()" aria-label="UPC barcode">
     <button class="btn btn-primary btn-sm" onclick="lookupUPC()" style="flex:0 0 auto">Go →</button>
   </div>
@@ -1118,10 +1118,10 @@ let obFirst         = '';
 let recipePref      = 'any';
 
 const CAT_ICONS = {
-  'Food & Beverage':'🍔','Household Supplies':'🧹','Electronics':'📱',
+  'Food & Beverage':'🥫','Household Supplies':'🏠','Electronics':'📱',
   'Clothing & Accessories':'👕','Health & Beauty':'💊','Office Supplies':'📎',
   'Tools & Hardware':'🔧','Toys & Games':'🎮','Books & Media':'📚',
-  'Pet Supplies':'🐾','Sports & Outdoors':'⛹️','Automotive':'🚗','Other':'📦'
+  'Pet Supplies':'🐾','Sports & Outdoors':'🏃','Automotive':'🚗','Other':'📦'
 };
 // ══════════════════════════════════════════════════════════════════════════
 // ONBOARDING PIN
@@ -1253,10 +1253,7 @@ function switchTab(name) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// CAMERA — continuous auto-scan, no tap needed, works on iPhone Safari
-// ══════════════════════════════════════════════════════════════════════════
-// CAMERA — canvas frame scan, works on iPhone Safari without any library
-// Draws video frames to canvas, sends to BarcodeDetector or ZXing
+// CAMERA — two-mode: live viewfinder + tap-to-capture on iOS Safari
 // ══════════════════════════════════════════════════════════════════════════
 let videoStream   = null;
 let scanLoop      = null;
@@ -1264,6 +1261,27 @@ let scanCanvas    = null;
 let scanCtx       = null;
 let lastScanned   = '';
 let lastScannedAt = 0;
+let zxingReady    = false;
+let ZXingInstance = null;
+
+// Load ZXing WASM once, on demand
+async function ensureZXing() {
+  if (zxingReady) return true;
+  return new Promise(resolve => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/zxing-wasm@1.2.7/dist/full/zxing_full.min.js';
+    s.onload = async () => {
+      try {
+        const mod = await ZXingWASM.getZXingModule();
+        ZXingInstance = mod;
+        zxingReady = true;
+      } catch(e) {}
+      resolve(zxingReady);
+    };
+    s.onerror = () => resolve(false);
+    document.head.appendChild(s);
+  });
+}
 
 function toggleCamera() { cameraActive ? stopCamera() : startCamera(); }
 
@@ -1344,39 +1362,42 @@ function startNativeDetector(video) {
   })();
 }
 
-// Method 2: Canvas frame scan — draw frame, read pixels, decode via ZXing WASM
-// Uses ZXing's open REST endpoint (no API key, no library download needed)
-function startCanvasScan(video) {
-  let scanning = false;
+// Method 2: Canvas frame scan — draws frames and tries to decode
+// Uses ZXing WASM loaded from jsdelivr CDN
+async function startCanvasScan(video) {
+  const loaded = await ensureZXing();
+  if (!loaded || !zxingReady) {
+    // ZXing failed to load — show tip to enter manually
+    showScanStatus('Live scan unavailable in this browser. Enter the barcode number manually below, or try typing the product name.','info');
+    return;
+  }
+  let busy = false;
   (async function tick() {
     if (!cameraActive) return;
-    if (!scanning && video.readyState >= 2) {
-      scanning = true;
+    if (!busy && video.readyState >= 2) {
+      busy = true;
       try {
-        scanCanvas.width  = video.videoWidth  || 640;
-        scanCanvas.height = video.videoHeight || 480;
-        scanCtx.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
-        scanCanvas.toBlob(async (blob) => {
-          if (!blob || !cameraActive) { scanning = false; return; }
-          try {
-            const fd = new FormData();
-            fd.append('file', blob, 'frame.jpg');
-            const r = await fetch('https://api.qrserver.com/v1/read-qr-code/?outputformat=json', {
-              method:'POST', body: fd
-            });
-            const data = await r.json();
-            const symbol = data?.[0]?.symbol?.[0];
-            if (symbol?.data && symbol.data !== 'null' && symbol.error === null) {
-              onCodeDetected(symbol.data);
-              scanning = false;
-              return;
-            }
-          } catch(e) {}
-          scanning = false;
-        }, 'image/jpeg', 0.85);
-      } catch(e) { scanning = false; }
+        const vw = video.videoWidth || 640;
+        const vh = video.videoHeight || 480;
+        scanCanvas.width  = vw;
+        scanCanvas.height = vh;
+        scanCtx.drawImage(video, 0, 0, vw, vh);
+        const imgData = scanCtx.getImageData(0, 0, vw, vh);
+        if (typeof ZXingWASM !== 'undefined' && ZXingWASM.readBarcodesFromImageData) {
+          const results = await ZXingWASM.readBarcodesFromImageData(imgData, {
+            tryHarder: true,
+            formats: ['EAN-13','EAN-8','UPC-A','UPC-E','Code128','Code39']
+          });
+          if (results?.length && results[0].text) {
+            onCodeDetected(results[0].text);
+            busy = false;
+            return;
+          }
+        }
+      } catch(e) {}
+      busy = false;
     }
-    scanLoop = setTimeout(tick, 600);
+    scanLoop = setTimeout(tick, 500);
   })();
 }
 
@@ -1419,10 +1440,17 @@ function stopCamera() {
 // UPC LOOKUP — 3 sources + leading-zero padding
 // ══════════════════════════════════════════════════════════════════════════
 async function lookupUPC() {
-  let upc = document.getElementById('upc-input').value.trim().replace(/\D/g,'');
-  if (!upc) { showScanStatus('Enter a barcode number first','error'); return; }
+  const raw = document.getElementById('upc-input').value.trim();
+  if (!raw) { showScanStatus('Enter a barcode number or product name','error'); return; }
 
-  // Pad to 12 digits if shorter (handles 10-digit codes like 1600012399)
+  // If input looks like a name (has letters), do a name search instead
+  if (/[a-zA-Z]{2,}/.test(raw)) {
+    searchByName(raw);
+    return;
+  }
+
+  let upc = raw.replace(/\D/g,'');
+  // Pad to 12 digits if shorter
   if (upc.length < 12) upc = upc.padStart(12,'0');
   document.getElementById('upc-input').value = upc;
 
@@ -1477,6 +1505,37 @@ async function lookupUPC() {
   fillCard(currentProduct, true);
   showScanStatus('Not found in database — tap name and brand below to fill in manually','info');
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// NAME SEARCH — search Open Food Facts by product name
+// ══════════════════════════════════════════════════════════════════════════
+async function searchByName(query) {
+  showScanStatus('🔍 Searching for "' + query + '"...','loading');
+  document.getElementById('product-card').classList.remove('visible');
+  try {
+    const r = await fetch('https://world.openfoodfacts.org/cgi/search.pl?search_terms='
+      + encodeURIComponent(query) + '&search_simple=1&action=process&json=1&page_size=5');
+    const d = await r.json();
+    if (d.products?.length) {
+      const p = d.products.find(x => x.product_name) || d.products[0];
+      currentProduct = {
+        upc: p.code || '',
+        source: 'Open Food Facts',
+        name: p.product_name || p.product_name_en || query,
+        brand: p.brands || '',
+        category: detectCat(p.categories||'', p.product_name||'', 'Food & Beverage')
+      };
+      fillCard(currentProduct);
+      showScanStatus('✓ Found — check details below','success');
+      return;
+    }
+  } catch(e){}
+  // Nothing found — open as manual entry
+  currentProduct = { upc:'', source:'Manual', name:query, brand:'', category:'Other' };
+  fillCard(currentProduct, true);
+  showScanStatus('Not found — edit name and details below','info');
+}
+
 
 function detectCat(cat, name, fb) {
   const s=(cat+' '+name).toLowerCase();
