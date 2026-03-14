@@ -1,1 +1,2298 @@
+<!DOCTYPE html>
 
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://world.openfoodfacts.org https://api.upcitemdb.com https://go-upc.com https://script.google.com https://api.anthropic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: https://api.qrserver.com; media-src 'self' blob:;">
+<meta name="theme-color" content="#0d0e12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="StockKeeper">
+<title>StockKeeper</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@700;800&display=swap');
+:root{
+  --bg:#0a0b0f;
+  --surface:#13151c;
+  --surface2:#1a1d27;
+  --border:#252838;
+  --border-light:#32364a;
+  --accent:#34d984;
+  --accent-dim:rgba(52,217,132,.12);
+  --accent-glow:rgba(52,217,132,.25);
+  --indigo:#7c88ff;
+  --indigo-dim:rgba(124,136,255,.12);
+  --purple:#a78bfa;
+  --warn:#ffb84d;
+  --warn-dim:rgba(255,184,77,.12);
+  --danger:#ff6b6b;
+  --danger-dim:rgba(255,107,107,.12);
+  --text:#eef0f8;
+  --text2:#b0b5cc;
+  --muted:#5c6080;
+  --sans:'Inter',system-ui,sans-serif;
+  --display:'Syne',sans-serif;
+  --radius:14px;
+  --radius-sm:10px;
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --shadow-sm:0 1px 3px rgba(0,0,0,.4);
+  --shadow-md:0 4px 16px rgba(0,0,0,.5);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-text-size-adjust:none}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+
+/* ─── ONBOARDING ──────────────────────────────────────────────────────── */
+#onboarding{position:fixed;inset:0;background:var(–bg);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 28px;text-align:center;overflow-y:auto}
+#onboarding.hidden{display:none}
+.ob-logo{font-family:var(–display);font-size:2.6rem;font-weight:800;color:var(–accent);margin-bottom:4px;letter-spacing:-.5px}
+.ob-logo span{color:var(–text)}
+.ob-sub{color:var(–muted);font-size:.85rem;margin-bottom:40px;font-weight:400}
+.ob-steps{width:100%;max-width:320px;margin-bottom:36px}
+.ob-step{display:flex;align-items:flex-start;gap:14px;margin-bottom:22px;text-align:left}
+.ob-num{width:34px;height:34px;border-radius:50%;background:var(–accent);color:#000;font-weight:800;font-size:.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;box-shadow:0 0 16px var(–accent-glow)}
+.ob-step-text strong{display:block;font-size:.9rem;font-weight:600;margin-bottom:3px;color:var(–text)}
+.ob-step-text span{font-size:.78rem;color:var(–muted);line-height:1.55}
+.ob-pin-label{font-size:.8rem;color:var(–text2);margin-bottom:14px;font-weight:500}
+
+/* ─── PIN ─────────────────────────────────────────────────────────────── */
+#pin-screen{position:fixed;inset:0;background:var(–bg);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px}
+#pin-screen.hidden{display:none}
+.pin-logo{font-family:var(–display);font-size:2.1rem;font-weight:800;color:var(–accent);margin-bottom:6px;letter-spacing:-.5px}
+.pin-logo span{color:var(–text)}
+#pin-prompt{color:var(–text2);font-size:.92rem;margin-bottom:22px;text-align:center;min-height:1.2em;font-weight:500}
+.pin-preview{font-size:1.9rem;letter-spacing:.5em;min-height:2.5rem;margin-bottom:10px;color:var(–accent);text-align:center;min-width:120px;font-weight:300}
+.pin-dots{display:flex;gap:16px;margin-bottom:32px}
+.pin-dot{width:14px;height:14px;border-radius:50%;background:var(–border-light);transition:all .2s var(–spring)}
+.pin-dot.filled{background:var(–accent);transform:scale(1.2);box-shadow:0 0 10px var(–accent-glow)}
+.pin-dot.error{background:var(–danger);box-shadow:0 0 10px rgba(255,107,107,.4)}
+/* iOS calculator-style PIN keys */
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%;max-width:300px}
+.pin-key{
+height:76px;border-radius:50%;border:none;
+background:var(–surface2);
+color:var(–text);font-family:var(–display);font-size:2rem;font-weight:700;
+cursor:pointer;display:flex;align-items:center;justify-content:center;
+transition:transform .12s var(–spring),background .1s;
+user-select:none;-webkit-tap-highlight-color:transparent;
+box-shadow:0 3px 12px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);
+}
+.pin-key:active{background:var(–surface);transform:scale(.88)}
+.pin-key.zero{grid-column:2}
+.pin-key.del{grid-column:3;font-size:1.4rem;color:var(–text2);background:transparent;box-shadow:none}
+.pin-key.del:active{background:var(–surface2);transform:scale(.88)}
+.pin-error{color:var(–danger);font-size:.84rem;margin-top:12px;min-height:1.4em;text-align:center;font-weight:600}
+
+/* ─── APP SHELL ───────────────────────────────────────────────────────── */
+#app{display:none}
+#app.unlocked{display:flex;flex-direction:column;min-height:100vh}
+header{
+background:rgba(10,11,15,.85);
+backdrop-filter:saturate(180%) blur(16px);
+-webkit-backdrop-filter:saturate(180%) blur(16px);
+border-bottom:1px solid var(–border);
+padding:12px 18px;
+display:flex;align-items:center;justify-content:space-between;
+position:sticky;top:0;z-index:200;flex-shrink:0;
+}
+.logo{font-family:var(–display);font-size:1.15rem;font-weight:800;color:var(–accent);letter-spacing:-.3px}
+.logo span{color:var(–text)}
+.hdr-right{display:flex;align-items:center;gap:9px}
+.pill{
+background:var(–accent-dim);border:1px solid rgba(52,217,132,.25);
+color:var(–accent);font-size:.68rem;font-weight:600;
+padding:5px 12px;border-radius:100px;letter-spacing:.03em;font-family:var(–sans);
+}
+.hdr-btn{
+width:38px;height:38px;border-radius:12px;
+border:1px solid var(–border);background:var(–surface2);
+color:var(–text2);cursor:pointer;font-size:.95rem;
+display:flex;align-items:center;justify-content:center;flex-shrink:0;
+transition:transform .12s var(–spring),background .1s;
+}
+.hdr-btn:active{background:var(–border);transform:scale(.88)}
+
+/* ─── TAB BAR ─────────────────────────────────────────────────────────── */
+.tab-bar{
+display:flex;
+background:rgba(13,15,20,.92);
+backdrop-filter:saturate(180%) blur(16px);
+-webkit-backdrop-filter:saturate(180%) blur(16px);
+border-top:1px solid var(–border);
+position:fixed;bottom:0;left:0;right:0;z-index:200;
+padding:6px 4px calc(6px + var(–safe-bottom));
+}
+.tab{
+flex:1;padding:6px 2px;text-align:center;
+font-size:.56rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+cursor:pointer;color:var(–muted);
+font-family:var(–sans);user-select:none;
+display:flex;flex-direction:column;align-items:center;gap:3px;
+-webkit-tap-highlight-color:transparent;
+transition:color .18s;
+position:relative;
+}
+.tab-icon{font-size:1.2rem;line-height:1;transition:transform .2s var(–spring)}
+.tab.active{color:var(–accent)}
+.tab.active .tab-icon{transform:scale(1.18)}
+/* Active indicator bubble under icon */
+.tab::after{
+content:’’;position:absolute;top:4px;left:50%;transform:translateX(-50%);
+width:32px;height:32px;border-radius:10px;background:var(–accent-dim);
+opacity:0;transition:opacity .2s;
+}
+.tab.active::after{opacity:1}
+
+/* ─── SCROLL AREA ─────────────────────────────────────────────────────── */
+.scroll-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(80px + var(–safe-bottom))}
+.panel{display:none;padding:16px 16px 0}.panel.active{display:block}
+
+/* ─── SCAN ────────────────────────────────────────────────────────────── */
+.scan-area{background:var(–surface);border:1px solid var(–border);border-radius:var(–radius);overflow:hidden;margin-bottom:14px;box-shadow:var(–shadow-md)}
+#scanner-container{width:100%;height:250px;background:#000;position:relative;display:none}
+#scanner-container video{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:0}
+.scan-overlay{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;background:linear-gradient(to bottom,rgba(0,0,0,.35) 0%,transparent 30%,transparent 70%,rgba(0,0,0,.35) 100%)}
+.scan-frame{position:relative;width:72%;height:82px}
+.sf-tl,.sf-tr,.sf-bl,.sf-br{position:absolute;width:22px;height:22px;border-color:var(–accent);border-style:solid;border-radius:2px}
+.sf-tl{top:0;left:0;border-width:3px 0 0 3px}.sf-tr{top:0;right:0;border-width:3px 3px 0 0}
+.sf-bl{bottom:0;left:0;border-width:0 0 3px 3px}.sf-br{bottom:0;right:0;border-width:0 3px 3px 0}
+.scan-line{position:absolute;left:0;width:100%;height:2px;background:linear-gradient(90deg,transparent 0%,var(–accent) 40%,rgba(52,217,132,.9) 50%,var(–accent) 60%,transparent 100%);box-shadow:0 0 12px var(–accent),0 0 4px var(–accent);animation:scanline 2s ease-in-out infinite;border-radius:1px}
+@keyframes scanline{0%,100%{top:8%;opacity:.7}50%{top:82%;opacity:1}}
+.scan-idle{padding:28px 16px;text-align:center}
+.scan-idle .icon{font-size:2.2rem;margin-bottom:8px;display:block}
+.scan-idle p{color:var(–muted);font-size:.8rem;line-height:1.55}
+
+/* Main scan button — big, satisfying, iOS-style */
+#cam-btn{
+height:58px;border-radius:var(–radius);border:none;
+font-family:var(–display);font-size:1rem;font-weight:700;
+cursor:pointer;width:100%;letter-spacing:.01em;
+transition:transform .15s var(–spring),box-shadow .15s,opacity .1s;
+margin-bottom:14px;
+}
+#cam-btn.idle{
+background:linear-gradient(160deg,#3ef597,var(–accent));
+color:#051a0d;
+box-shadow:0 4px 20px var(–accent-glow),0 2px 6px rgba(0,0,0,.3);
+}
+#cam-btn.idle:active{transform:scale(.95);box-shadow:0 2px 8px var(–accent-glow);opacity:.9}
+#cam-btn.scanning{
+background:linear-gradient(160deg,#ff8585,var(–danger));
+color:#fff;
+box-shadow:0 4px 20px rgba(255,107,107,.3),0 2px 6px rgba(0,0,0,.3);
+}
+#cam-btn.scanning:active{transform:scale(.95);opacity:.9}
+
+.or-div{display:flex;align-items:center;gap:10px;margin-bottom:12px;color:var(–muted);font-size:.72rem;font-weight:500}
+.or-div::before,.or-div::after{content:’’;flex:1;height:1px;background:var(–border)}
+.upc-row{display:flex;gap:8px;margin-bottom:12px}
+
+/* ─── INPUTS / BUTTONS ────────────────────────────────────────────────── */
+input,select,textarea{
+background:var(–surface2);
+border:1.5px solid var(–border);
+color:var(–text);font-family:var(–sans);font-size:.9rem;
+padding:12px 14px;border-radius:var(–radius-sm);
+outline:none;width:100%;appearance:none;-webkit-appearance:none;
+min-height:50px;
+transition:border-color .18s,box-shadow .18s;
+box-shadow:var(–shadow-sm);
+}
+input:focus,select:focus,textarea:focus{
+border-color:var(–accent);
+box-shadow:0 0 0 3px var(–accent-dim),var(–shadow-sm);
+}
+input::placeholder{color:var(–muted)}
+select{
+background-image:url(“data:image/svg+xml,%3Csvg xmlns=‘http://www.w3.org/2000/svg’ width=‘11’ height=‘7’ viewBox=‘0 0 11 7’%3E%3Cpath d=‘M1 1l4.5 4.5L10 1’ stroke=’%235c6080’ stroke-width=‘1.5’ fill=‘none’ stroke-linecap=‘round’/%3E%3C/svg%3E”);
+background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;
+}
+label{display:block;font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(–text2);margin-bottom:6px;margin-top:14px}
+
+/* Buttons */
+.btn{
+display:block;width:100%;padding:14px 18px;
+border-radius:var(–radius-sm);border:none;cursor:pointer;
+font-family:var(–sans);font-size:.88rem;font-weight:600;
+letter-spacing:.01em;text-align:center;min-height:52px;
+transition:transform .14s var(–spring),box-shadow .14s,opacity .1s;
+}
+.btn-primary{
+background:linear-gradient(160deg,#3ef597,var(–accent));color:#051a0d;
+box-shadow:0 3px 14px var(–accent-glow);
+}
+.btn-primary:active{transform:scale(.96);opacity:.9;box-shadow:0 1px 6px var(–accent-glow)}
+.btn-secondary{
+background:var(–surface2);color:var(–text);
+border:1.5px solid var(–border);box-shadow:var(–shadow-sm);
+}
+.btn-secondary:active{transform:scale(.96);border-color:var(–border-light);background:var(–surface)}
+.btn-ai{
+background:linear-gradient(135deg,var(–indigo),var(–purple));
+color:#fff;font-weight:700;
+box-shadow:0 3px 14px rgba(124,136,255,.3);
+}
+.btn-ai:active{transform:scale(.96);opacity:.9}
+.btn-danger{background:linear-gradient(135deg,#ff8585,var(–danger));color:#fff;box-shadow:0 3px 10px rgba(255,107,107,.25)}
+.btn-danger:active{transform:scale(.96)}
+.btn-sm{display:inline-flex;align-items:center;justify-content:center;width:auto;padding:10px 16px;font-size:.78rem;min-height:44px}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+
+/* ─── STATUS ──────────────────────────────────────────────────────────── */
+.status-bar{padding:12px 15px;border-radius:var(–radius-sm);font-size:.8rem;margin-bottom:12px;line-height:1.5;display:none;align-items:flex-start;gap:9px;font-weight:500}
+.status-bar.show{display:flex}
+.status-bar.info{background:var(–indigo-dim);border:1px solid rgba(124,136,255,.2);color:#a0aaff}
+.status-bar.success{background:var(–accent-dim);border:1px solid rgba(52,217,132,.2);color:var(–accent)}
+.status-bar.error{background:var(–danger-dim);border:1px solid rgba(255,107,107,.2);color:#ff9494}
+.status-bar.loading{background:var(–warn-dim);border:1px solid rgba(255,184,77,.2);color:var(–warn)}
+
+/* ─── TOAST ───────────────────────────────────────────────────────────── */
+#toast{
+position:fixed;bottom:calc(80px + var(–safe-bottom) + 10px);left:50%;
+transform:translateX(-50%) translateY(18px);
+background:rgba(30,33,45,.96);
+backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+border:1px solid var(–border-light);color:var(–text);
+padding:12px 22px;border-radius:100px;font-size:.82rem;font-weight:600;
+opacity:0;transition:all .28s var(–spring);
+pointer-events:none;z-index:500;white-space:nowrap;
+box-shadow:var(–shadow-lg);max-width:88vw;text-align:center;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.success{background:var(–accent);color:#051a0d;border-color:var(–accent)}
+#toast.error{background:var(–danger);color:#fff;border-color:var(–danger)}
+
+/* ─── PRODUCT CARD ────────────────────────────────────────────────────── */
+.product-card{
+background:var(–surface);
+border:1.5px solid rgba(52,217,132,.35);
+border-radius:var(–radius);padding:16px;margin-bottom:14px;
+display:none;
+box-shadow:0 0 0 1px rgba(52,217,132,.06),var(–shadow-md);
+}
+.product-card.visible{display:block;animation:cardIn .25s var(–spring)}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.prod-header{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start}
+.prod-thumb{
+width:60px;height:60px;border-radius:14px;
+background:var(–surface2);border:1px solid var(–border);
+display:flex;align-items:center;justify-content:center;font-size:1.8rem;
+flex-shrink:0;box-shadow:var(–shadow-sm);
+}
+.prod-name{font-family:var(–display);font-size:.98rem;font-weight:700;line-height:1.3;margin-bottom:3px;word-break:break-word;color:var(–text)}
+.prod-brand{color:var(–text2);font-size:.76rem;margin-bottom:8px;font-weight:400}
+[contenteditable=“true”]{border-bottom:2px dashed rgba(52,217,132,.5);outline:none;padding-bottom:1px;min-width:40px}
+.tag{display:inline-flex;align-items:center;padding:3px 9px;border-radius:100px;font-size:.62rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border:1px solid;margin-right:4px;margin-bottom:3px}
+.tag-cat{border-color:rgba(124,136,255,.4);color:var(–indigo);background:var(–indigo-dim)}
+.tag-upc{border-color:var(–border);color:var(–muted)}
+.tag-source{border-color:rgba(52,217,132,.3);color:var(–accent);background:var(–accent-dim);font-size:.58rem}
+.section-lbl{font-size:.64rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(–muted);margin:14px 0 8px;display:flex;align-items:center;gap:8px}
+.section-lbl::after{content:’’;flex:1;height:1px;background:var(–border)}
+
+/* ─── LOCATION CHIPS ──────────────────────────────────────────────────── */
+.loc-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.loc-chip{
+padding:10px 4px;border-radius:var(–radius-sm);border:1.5px solid var(–border);
+text-align:center;cursor:pointer;font-size:.7rem;font-weight:500;color:var(–muted);
+transition:all .18s var(–spring);min-height:64px;
+display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+user-select:none;-webkit-tap-highlight-color:transparent;
+background:var(–surface2);
+}
+.lc-icon{font-size:1.3rem}
+.loc-chip:active{transform:scale(.94)}
+.loc-chip.active{border-color:var(–accent);color:var(–accent);background:var(–accent-dim);box-shadow:0 0 0 1px var(–accent-dim)}
+
+/* ─── QTY ─────────────────────────────────────────────────────────────── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.full{grid-column:1/-1}
+.qty-row{display:flex;align-items:center;gap:8px;margin-top:6px}
+.qty-btn{
+width:46px;height:46px;border-radius:12px;
+border:1.5px solid var(–border);background:var(–surface2);
+color:var(–text);cursor:pointer;font-size:1.3rem;
+display:flex;align-items:center;justify-content:center;flex-shrink:0;
+-webkit-tap-highlight-color:transparent;
+transition:transform .12s var(–spring),border-color .12s,color .12s;
+font-weight:300;
+}
+.qty-btn:active{transform:scale(.84);border-color:var(–accent);color:var(–accent)}
+#qty-input{text-align:center;padding:8px 4px;font-size:1rem;font-weight:600;min-height:46px}
+
+/* ─── INVENTORY ───────────────────────────────────────────────────────── */
+.search-row{display:flex;gap:8px;margin-bottom:10px}
+.search-row input{flex:1;min-height:46px;padding:10px 14px}
+.filter-bar{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:3px;scrollbar-width:none}
+.filter-bar::-webkit-scrollbar{display:none}
+.fchip{
+padding:8px 14px;border-radius:100px;font-size:.68rem;font-weight:600;
+cursor:pointer;border:1.5px solid var(–border);color:var(–muted);
+transition:all .18s var(–spring);white-space:nowrap;
+font-family:var(–sans);user-select:none;display:flex;align-items:center;gap:4px;
+background:var(–surface2);
+}
+.fchip:active{transform:scale(.94)}
+.fchip.active{background:var(–accent);border-color:var(–accent);color:#051a0d;box-shadow:0 2px 10px var(–accent-glow)}
+.inv-item{
+background:var(–surface);border:1px solid var(–border);
+border-radius:var(–radius-sm);padding:13px 14px;margin-bottom:8px;
+display:flex;gap:10px;align-items:center;
+transition:border-color .15s,transform .12s var(–spring);
+box-shadow:var(–shadow-sm);
+}
+.inv-item:active{transform:scale(.99);border-color:var(–border-light)}
+.inv-icon{font-size:1.5rem;flex-shrink:0}
+.inv-info{flex:1;min-width:0}
+.inv-name{font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(–text)}
+.inv-meta{color:var(–muted);font-size:.7rem;margin-top:4px;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.loc-badge{background:var(–surface2);border:1px solid var(–border);padding:2px 8px;border-radius:5px;font-size:.64rem;font-weight:500}
+.qty-badge{padding:2px 8px;border-radius:5px;font-size:.64rem;font-weight:700}
+.qty-badge.low{background:var(–warn-dim);border:1px solid rgba(255,184,77,.3);color:var(–warn)}
+.qty-badge.ok{background:var(–accent-dim);border:1px solid rgba(52,217,132,.25);color:var(–accent)}
+.inv-actions{display:flex;gap:6px;flex-shrink:0}
+.icon-btn{
+width:40px;height:40px;border-radius:10px;
+border:1px solid var(–border);background:var(–surface2);
+color:var(–text2);cursor:pointer;font-size:.9rem;
+display:flex;align-items:center;justify-content:center;
+-webkit-tap-highlight-color:transparent;
+transition:transform .12s var(–spring),border-color .12s,background .12s;
+}
+.icon-btn:active{transform:scale(.84);border-color:var(–border-light);background:var(–surface)}
+
+/* ─── EDIT MODAL ──────────────────────────────────────────────────────── */
+#edit-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:800;display:none;align-items:flex-end;justify-content:center}
+#edit-modal.open{display:flex}
+.modal-sheet{
+background:var(–surface);
+border-radius:24px 24px 0 0;
+border-top:1px solid var(–border-light);
+padding:20px 18px calc(22px + var(–safe-bottom));
+width:100%;max-height:88vh;overflow-y:auto;
+animation:slideUp .28s var(–spring);
+box-shadow:0 -8px 32px rgba(0,0,0,.6);
+}
+@keyframes slideUp{from{transform:translateY(50px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-handle{width:40px;height:4px;background:var(–border-light);border-radius:2px;margin:0 auto 18px}
+.modal-title{font-family:var(–display);font-size:1.05rem;font-weight:800;margin-bottom:4px;color:var(–text)}
+
+/* ─── SHOPPING ────────────────────────────────────────────────────────── */
+.shop-add-row{display:flex;gap:8px;margin-bottom:14px}
+.shop-item{
+display:flex;align-items:center;gap:12px;
+padding:13px 14px;background:var(–surface);
+border:1px solid var(–border);border-radius:var(–radius-sm);
+margin-bottom:8px;min-height:56px;
+transition:border-color .15s;box-shadow:var(–shadow-sm);
+}
+.chk{
+width:26px;height:26px;border-radius:50%;
+border:2px solid var(–border-light);cursor:pointer;flex-shrink:0;
+display:flex;align-items:center;justify-content:center;
+transition:all .18s var(–spring);-webkit-tap-highlight-color:transparent;
+}
+.chk:active{transform:scale(.84)}
+.chk.checked{background:var(–accent);border-color:var(–accent);box-shadow:0 0 10px var(–accent-glow)}
+.chk.checked::after{content:‘✓’;font-size:.72rem;color:#051a0d;font-weight:800}
+.shop-name{flex:1;font-size:.88rem;font-weight:500;line-height:1.3}
+.shop-qty{color:var(–muted);font-size:.75rem;margin-right:4px}
+
+/* ─── RECIPES ─────────────────────────────────────────────────────────── */
+.recipe-hero{
+background:linear-gradient(135deg,rgba(124,136,255,.15),rgba(167,139,250,.12));
+border:1px solid rgba(124,136,255,.22);border-radius:var(–radius);
+padding:20px 18px;margin-bottom:14px;text-align:center;
+box-shadow:var(–shadow-sm);
+}
+.recipe-hero h2{font-family:var(–display);font-size:1.15rem;font-weight:800;margin-bottom:7px;color:var(–text)}
+.recipe-hero p{color:var(–text2);font-size:.8rem;line-height:1.6;margin-bottom:16px}
+.recipe-filters{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:16px}
+.recipe-filter-chip{
+padding:8px 15px;border-radius:100px;font-size:.72rem;font-weight:600;
+cursor:pointer;border:1.5px solid var(–border);color:var(–muted);
+transition:all .18s var(–spring);font-family:var(–sans);user-select:none;
+background:var(–surface2);
+}
+.recipe-filter-chip:active{transform:scale(.92)}
+.recipe-filter-chip.active{background:var(–indigo-dim);border-color:rgba(124,136,255,.5);color:#b8c0ff}
+.recipe-card{
+background:var(–surface);border:1px solid var(–border);
+border-radius:var(–radius);padding:18px;margin-bottom:12px;
+animation:cardIn .25s var(–spring);box-shadow:var(–shadow-sm);
+}
+.recipe-card h3{font-family:var(–display);font-size:.95rem;font-weight:800;margin-bottom:7px;color:var(–text)}
+.recipe-card .rc-meta{font-size:.72rem;color:var(–muted);margin-bottom:12px;display:flex;gap:7px;flex-wrap:wrap}
+.recipe-card .rc-meta span{background:var(–surface2);border:1px solid var(–border);padding:3px 9px;border-radius:6px;font-weight:500}
+.recipe-body{font-size:.8rem;color:var(–text2);line-height:1.85;white-space:pre-wrap;word-break:break-word}
+.recipe-body strong{color:var(–text);font-weight:600}
+.ai-thinking{display:flex;align-items:center;gap:10px;padding:18px;color:var(–muted);font-size:.82rem;font-weight:500}
+.ai-dot{width:8px;height:8px;border-radius:50%;background:var(–indigo);animation:blink 1.2s ease-in-out infinite}
+.ai-dot:nth-child(2){animation-delay:.25s}
+.ai-dot:nth-child(3){animation-delay:.5s}
+@keyframes blink{0%,100%{opacity:.15;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+.ingredients-used{font-size:.73rem;color:var(–muted);margin-top:10px;padding-top:10px;border-top:1px solid var(–border)}
+.ingredients-used span{display:inline-block;background:var(–accent-dim);border:1px solid rgba(52,217,132,.22);color:var(–accent);padding:3px 8px;border-radius:5px;margin:2px 3px 2px 0;font-size:.65rem;font-weight:600}
+
+/* ─── SETUP ───────────────────────────────────────────────────────────── */
+.ss{background:var(–surface);border:1px solid var(–border);border-radius:var(–radius);margin-bottom:10px;overflow:hidden;box-shadow:var(–shadow-sm)}
+.ss-hdr{padding:14px 16px;display:flex;align-items:center;gap:11px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:background .15s}
+.ss-hdr:active{background:var(–surface2)}
+.ss-icon{width:30px;height:30px;border-radius:9px;background:var(–surface2);display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0;border:1px solid var(–border)}
+.ss-hdr h3{font-family:var(–sans);font-size:.88rem;font-weight:600;flex:1;color:var(–text)}
+.ss-arrow{color:var(–muted);font-size:.8rem;transition:transform .25s var(–spring);flex-shrink:0}
+.ss-body{padding:0 16px;max-height:0;overflow:hidden;transition:max-height .38s ease,padding .38s ease}
+.ss-body.open{padding:0 16px 16px;max-height:9999px}
+.ss-body p{color:var(–text2);font-size:.76rem;line-height:1.75;margin-bottom:9px}
+.ss-body ol,.ss-body ul{color:var(–text2);font-size:.76rem;line-height:1.9;padding-left:16px;margin-bottom:9px}
+.code-block{background:#07080c;border:1px solid var(–border);border-radius:10px;padding:14px;font-size:.65rem;color:#7dd3a8;overflow-x:auto;white-space:pre;margin-bottom:9px;line-height:1.6;max-height:180px;overflow-y:auto;-webkit-overflow-scrolling:touch;font-family:‘Courier New’,monospace}
+.kbd{display:inline-block;background:var(–surface2);border:1px solid var(–border-light);border-radius:5px;padding:1px 7px;font-size:.72rem;font-family:var(–sans);font-weight:600;color:var(–text);box-shadow:0 1px 0 var(–border)}
+.url-row{display:flex;gap:8px;margin-top:6px}
+.url-row input{flex:1}
+.sync-ok{font-size:.72rem;color:var(–accent);margin-top:6px;font-weight:600}
+.sync-no{font-size:.72rem;color:var(–muted);margin-top:6px}
+.loc-row-edit{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.loc-row-edit input{flex:1;padding:10px 12px;font-size:.82rem;min-height:46px}
+.add-row{display:flex;gap:8px;margin-top:6px}
+.add-row input{flex:1}
+
+/* ─── RECEIPT ─────────────────────────────────────────────────────────── */
+.receipt-capture{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.receipt-capture-btn{
+height:108px;border-radius:var(–radius);
+border:2px dashed var(–border-light);background:var(–surface);
+cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+transition:all .18s var(–spring);-webkit-tap-highlight-color:transparent;
+}
+.receipt-capture-btn:active{border-color:var(–accent);background:var(–accent-dim);transform:scale(.96)}
+.receipt-capture-btn .rc-icon{font-size:2rem}
+.receipt-capture-btn .rc-label{font-size:.84rem;font-weight:600;color:var(–text)}
+.receipt-capture-btn .rc-sub{font-size:.7rem;color:var(–muted)}
+.receipt-tip{background:var(–surface2);border:1px solid var(–border);border-radius:var(–radius-sm);padding:11px 14px;font-size:.74rem;color:var(–muted);line-height:1.75;text-align:center}
+.receipt-preview-wrap{position:relative;border-radius:var(–radius);overflow:hidden;margin-bottom:14px;background:#000;box-shadow:var(–shadow-md)}
+#receipt-preview-img{width:100%;max-height:220px;object-fit:contain;display:block}
+.receipt-preview-clear{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .12s var(–spring)}
+.receipt-preview-clear:active{transform:scale(.84)}
+.receipt-processing{text-align:center;padding:32px 16px}
+.receipt-processing .rp-icon{font-size:2.6rem;margin-bottom:12px;animation:spin 2s linear infinite;display:block}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.receipt-processing p{color:var(–text2);font-size:.82rem;line-height:1.6}
+.receipt-processing strong{color:var(–text);display:block;font-size:.96rem;margin-bottom:7px;font-weight:700}
+.approval-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.approval-header h3{font-family:var(–display);font-size:.95rem;font-weight:800}
+.select-all-btn{font-size:.74rem;color:var(–accent);background:var(–accent-dim);border:1px solid rgba(52,217,132,.3);border-radius:8px;padding:6px 13px;cursor:pointer;font-weight:600;font-family:var(–sans);transition:all .15s}
+.select-all-btn:active{transform:scale(.92)}
+.approval-item{background:var(–surface);border:1px solid var(–border);border-radius:var(–radius-sm);padding:13px 14px;margin-bottom:9px;transition:border-color .15s;box-shadow:var(–shadow-sm)}
+.approval-item.confident{border-left:3px solid var(–accent)}
+.approval-item.uncertain{border-left:3px solid var(–warn)}
+.approval-item.unconfident{border-left:3px solid var(–muted);opacity:.7}
+.ai-row{display:flex;align-items:flex-start;gap:11px}
+.ai-check{width:28px;height:28px;border-radius:8px;border:2px solid var(–border-light);cursor:pointer;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .18s var(–spring);-webkit-tap-highlight-color:transparent}
+.ai-check:active{transform:scale(.84)}
+.ai-check.checked{background:var(–accent);border-color:var(–accent);box-shadow:0 0 8px var(–accent-glow)}
+.ai-check.checked::after{content:‘✓’;font-size:.72rem;color:#051a0d;font-weight:800}
+.ai-item-body{flex:1;min-width:0}
+.ai-item-name{font-size:.9rem;font-weight:600;margin-bottom:5px;line-height:1.3;color:var(–text)}
+.ai-item-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:7px}
+.ai-conf-badge{font-size:.63rem;padding:3px 8px;border-radius:5px;font-weight:700;letter-spacing:.04em}
+.ai-conf-badge.high{background:var(–accent-dim);border:1px solid rgba(52,217,132,.25);color:var(–accent)}
+.ai-conf-badge.med{background:var(–warn-dim);border:1px solid rgba(255,184,77,.3);color:var(–warn)}
+.ai-conf-badge.low{background:var(–surface2);border:1px solid var(–border);color:var(–muted)}
+.ai-item-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ai-qty-row{display:flex;align-items:center;gap:5px}
+.ai-qty-btn{
+width:32px;height:32px;border-radius:8px;
+border:1.5px solid var(–border);background:var(–surface2);
+color:var(–text);cursor:pointer;font-size:1rem;font-weight:300;
+display:flex;align-items:center;justify-content:center;
+-webkit-tap-highlight-color:transparent;
+transition:transform .12s var(–spring),border-color .12s;
+}
+.ai-qty-btn:active{transform:scale(.84);border-color:var(–accent);color:var(–accent)}
+.ai-qty-val{font-size:.88rem;font-weight:700;min-width:24px;text-align:center}
+.ai-loc-select{font-size:.73rem;padding:6px 28px 6px 10px;min-height:34px;border-radius:7px;background-size:9px;background-position:right 8px center}
+.ai-existing-badge{font-size:.64rem;background:var(–indigo-dim);border:1px solid rgba(124,136,255,.3);color:var(–indigo);padding:3px 8px;border-radius:5px;font-weight:600}
+.approve-footer{position:sticky;bottom:calc(64px + var(–safe-bottom));background:var(–bg);padding:10px 0 4px;margin-top:4px}
+.approve-count{font-size:.73rem;color:var(–muted);text-align:center;margin-bottom:7px;font-weight:500}
+
+/* ─── SUMMARY ─────────────────────────────────────────────────────────── */
+.summary-screen{display:none}
+.summary-screen.show{display:block;animation:cardIn .3s var(–spring)}
+.summary-hero{text-align:center;padding:26px 16px 18px}
+.summary-check{font-size:3.2rem;margin-bottom:10px;display:block;animation:popIn .4s var(–spring)}
+@keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+.summary-hero h2{font-family:var(–display);font-size:1.25rem;font-weight:800;margin-bottom:5px;color:var(–text)}
+.summary-hero p{color:var(–text2);font-size:.82rem}
+.summary-section{background:var(–surface);border:1px solid var(–border);border-radius:var(–radius);padding:16px;margin-bottom:11px;box-shadow:var(–shadow-sm)}
+.summary-section h3{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(–muted);margin-bottom:12px}
+.summary-loc-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(–border);font-size:.84rem}
+.summary-loc-row:last-child{border-bottom:none}
+.summary-loc-name{display:flex;align-items:center;gap:6px;color:var(–text2)}
+.summary-loc-count{color:var(–accent);font-weight:700;font-size:.82rem}
+.summary-updated-row{padding:6px 0;border-bottom:1px solid var(–border);font-size:.82rem;color:var(–text2)}
+.summary-updated-row:last-child{border-bottom:none}
+.summary-delta{color:var(–accent);font-size:.76rem;font-weight:600}
+.summary-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+
+/* ─── EMPTY STATE ─────────────────────────────────────────────────────── */
+.empty{text-align:center;padding:44px 16px;color:var(–muted);font-size:.82rem;line-height:1.7}
+.empty .ei{font-size:2.4rem;margin-bottom:10px;display:block;opacity:.6}
+.empty strong{color:var(–text2);display:block;margin-bottom:4px;font-weight:600}
+</style>
+
+</head>
+<body>
+
+<!-- ══════════════ ONBOARDING ═══════════════════════════════════════════ -->
+
+<div id="onboarding">
+  <div class="ob-logo">Stock<span>Keeper</span></div>
+  <div class="ob-sub">Your smart home inventory</div>
+  <div class="ob-steps">
+    <div class="ob-step">
+      <div class="ob-num">1</div>
+      <div class="ob-step-text">
+        <strong>Scan any barcode</strong>
+        <span>Point your camera at a product — name, brand and category fill in automatically</span>
+      </div>
+    </div>
+    <div class="ob-step">
+      <div class="ob-num">2</div>
+      <div class="ob-step-text">
+        <strong>Assign a location</strong>
+        <span>Choose a box, shelf, or room so you always know where things are</span>
+      </div>
+    </div>
+    <div class="ob-step">
+      <div class="ob-num">3</div>
+      <div class="ob-step-text">
+        <strong>Get recipe ideas</strong>
+        <span>AI scans your pantry and suggests what you can cook right now</span>
+      </div>
+    </div>
+  </div>
+  <p class="ob-pin-label">Set a 4-digit PIN to protect your inventory</p>
+  <div class="pin-dots" id="ob-dots">
+    <div class="pin-dot" id="ob-d0"></div>
+    <div class="pin-dot" id="ob-d1"></div>
+    <div class="pin-dot" id="ob-d2"></div>
+    <div class="pin-dot" id="ob-d3"></div>
+  </div>
+  <div class="pin-pad">
+    <button class="pin-key" onclick="obPinTap('1')">1</button>
+    <button class="pin-key" onclick="obPinTap('2')">2</button>
+    <button class="pin-key" onclick="obPinTap('3')">3</button>
+    <button class="pin-key" onclick="obPinTap('4')">4</button>
+    <button class="pin-key" onclick="obPinTap('5')">5</button>
+    <button class="pin-key" onclick="obPinTap('6')">6</button>
+    <button class="pin-key" onclick="obPinTap('7')">7</button>
+    <button class="pin-key" onclick="obPinTap('8')">8</button>
+    <button class="pin-key" onclick="obPinTap('9')">9</button>
+    <button class="pin-key zero" onclick="obPinTap('0')">0</button>
+    <button class="pin-key del" onclick="obPinDel()">⌫</button>
+  </div>
+  <div class="pin-error" id="ob-error"></div>
+</div>
+
+<!-- ══════════════ PIN LOCK ══════════════════════════════════════════════ -->
+
+<div id="pin-screen">
+  <div class="pin-logo">Stock<span>Keeper</span></div>
+  <div id="pin-prompt">Enter PIN to unlock</div>
+  <div class="pin-preview" id="pin-preview"></div>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-pad">
+    <button class="pin-key" onclick="pinTap('1')">1</button>
+    <button class="pin-key" onclick="pinTap('2')">2</button>
+    <button class="pin-key" onclick="pinTap('3')">3</button>
+    <button class="pin-key" onclick="pinTap('4')">4</button>
+    <button class="pin-key" onclick="pinTap('5')">5</button>
+    <button class="pin-key" onclick="pinTap('6')">6</button>
+    <button class="pin-key" onclick="pinTap('7')">7</button>
+    <button class="pin-key" onclick="pinTap('8')">8</button>
+    <button class="pin-key" onclick="pinTap('9')">9</button>
+    <button class="pin-key zero" onclick="pinTap('0')">0</button>
+    <button class="pin-key del" onclick="pinDel()">⌫</button>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+</div>
+
+<!-- ══════════════ MAIN APP ══════════════════════════════════════════════ -->
+
+<div id="app">
+  <header>
+    <div class="logo">Stock<span>Keeper</span></div>
+    <div class="hdr-right">
+      <div class="pill" id="total-count">0 items</div>
+      <button class="hdr-btn" onclick="lockApp()" aria-label="Lock app">🔒</button>
+    </div>
+  </header>
+
+  <div class="scroll-area" id="scroll-area">
+
+```
+<!-- ── SCAN ─────────────────────────────────────────────────────── -->
+<div class="panel active" id="panel-scan">
+  <div class="scan-area">
+    <div id="scanner-container">
+      <div class="scan-overlay">
+        <div class="scan-frame">
+          <div class="sf-tl"></div><div class="sf-tr"></div>
+          <div class="sf-bl"></div><div class="sf-br"></div>
+        </div>
+        <div class="scan-line"></div>
+      </div>
+    </div>
+    <div class="scan-idle" id="scan-idle">
+      <div class="icon">📷</div>
+      <p>Tap Scan Barcode or type a UPC below</p>
+    </div>
+  </div>
+
+  <button id="cam-btn" class="idle" onclick="toggleCamera()">📷 Scan Barcode</button>
+
+  <div class="or-div">or enter manually</div>
+  <div class="upc-row">
+    <input type="text" id="upc-input" placeholder="UPC / barcode number..." inputmode="numeric"
+      onkeydown="if(event.key==='Enter')lookupUPC()" aria-label="UPC barcode">
+    <button class="btn btn-primary btn-sm" onclick="lookupUPC()" style="flex:0 0 auto">Go →</button>
+  </div>
+
+  <div class="status-bar" id="scan-status" role="status" aria-live="polite"></div>
+
+  <!-- PRODUCT CARD -->
+  <div class="product-card" id="product-card">
+    <div class="prod-header">
+      <div class="prod-thumb" id="prod-thumb">📦</div>
+      <div style="flex:1;min-width:0">
+        <div class="prod-name" id="prod-name"></div>
+        <div class="prod-brand" id="prod-brand"></div>
+        <span class="tag tag-cat" id="prod-cat-tag"></span>
+        <span class="tag tag-upc" id="prod-upc-tag"></span>
+        <span class="tag tag-source" id="prod-source-tag"></span>
+      </div>
+    </div>
+
+    <div class="section-lbl">Location</div>
+    <select id="loc-select" aria-label="Location" style="margin-bottom:12px"></select>
+
+    <div class="section-lbl">Details</div>
+    <div class="g2">
+      <div>
+        <label>Quantity</label>
+        <div class="qty-row">
+          <button class="qty-btn" onclick="adjustQty(-1)" aria-label="Decrease">−</button>
+          <input type="number" id="qty-input" value="1" min="1" aria-label="Quantity">
+          <button class="qty-btn" onclick="adjustQty(1)" aria-label="Increase">+</button>
+        </div>
+      </div>
+      <div>
+        <label>Category</label>
+        <select id="cat-override" aria-label="Override category">
+          <option value="">Auto-detected</option>
+          <option>Food &amp; Beverage</option>
+          <option>Household Supplies</option>
+          <option>Electronics</option>
+          <option>Clothing &amp; Accessories</option>
+          <option>Health &amp; Beauty</option>
+          <option>Office Supplies</option>
+          <option>Tools &amp; Hardware</option>
+          <option>Toys &amp; Games</option>
+          <option>Books &amp; Media</option>
+          <option>Pet Supplies</option>
+          <option>Sports &amp; Outdoors</option>
+          <option>Automotive</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="full">
+        <label>Notes (optional)</label>
+        <input type="text" id="prod-notes" placeholder="Expiry date, condition, fragile...">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="clearScan()">✕ Clear</button>
+      <button class="btn btn-primary" onclick="addToInventory()">+ Add Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── INVENTORY ─────────────────────────────────────────────────── -->
+<div class="panel" id="panel-stock">
+  <div class="search-row">
+    <input type="search" id="inv-search" placeholder="Search items..." aria-label="Search inventory"
+      oninput="renderInventory()">
+  </div>
+  <div class="filter-bar" id="filter-bar"></div>
+  <div id="inventory-list" aria-live="polite" role="list"></div>
+</div>
+
+<!-- ── SHOPPING ──────────────────────────────────────────────────── -->
+<div class="panel" id="panel-list">
+  <div class="shop-add-row">
+    <input type="text" id="shop-manual-input" placeholder="Add item manually..."
+      onkeydown="if(event.key==='Enter')addShopManual()" aria-label="Add item to shopping list">
+    <button class="btn btn-secondary btn-sm" onclick="addShopManual()" style="flex:0 0 auto">+ Add</button>
+  </div>
+  <div id="shopping-list" aria-live="polite" role="list"></div>
+  <div id="shop-actions" style="display:none;margin-top:10px">
+    <button class="btn btn-primary" onclick="exportAnyList()" style="margin-bottom:7px">📋 Copy for AnyList</button>
+    <button class="btn btn-secondary" onclick="clearChecked()">Remove Checked</button>
+    <div style="margin-top:10px" class="info-box">
+      <strong>Import to AnyList (iPhone):</strong><br>
+      1. Tap "Copy for AnyList"<br>
+      2. Open AnyList → your list → <strong>···</strong><br>
+      3. <strong>Import Items</strong> → Paste → Done ✓
+    </div>
+  </div>
+</div>
+
+<!-- ── RECIPES ────────────────────────────────────────────────────── -->
+<div class="panel" id="panel-recipes">
+  <div class="recipe-hero">
+    <h2>🍳 What Can I Make?</h2>
+    <p>AI scans your pantry and suggests recipes you can cook with what you have right now.</p>
+    <div class="recipe-filters" id="recipe-filters">
+      <div class="recipe-filter-chip active" data-pref="any" onclick="setRecipePref(this)">Any meal</div>
+      <div class="recipe-filter-chip" data-pref="quick" onclick="setRecipePref(this)">Quick (≤30 min)</div>
+      <div class="recipe-filter-chip" data-pref="vegetarian" onclick="setRecipePref(this)">Vegetarian</div>
+      <div class="recipe-filter-chip" data-pref="dinner" onclick="setRecipePref(this)">Dinner</div>
+      <div class="recipe-filter-chip" data-pref="breakfast" onclick="setRecipePref(this)">Breakfast</div>
+      <div class="recipe-filter-chip" data-pref="snack" onclick="setRecipePref(this)">Snack</div>
+    </div>
+    <button class="btn btn-ai" onclick="getRecipes()" id="recipe-btn">✨ Suggest Recipes</button>
+  </div>
+
+  <div id="recipe-key-section" style="display:none;margin-bottom:10px">
+    <div class="ss" style="border-color:rgba(91,106,240,.3)">
+      <div class="ss-hdr" onclick="toggleSetup('apikey')">
+        <div class="ss-icon">🔑</div>
+        <h3>Claude API Key Required</h3>
+        <span class="ss-arrow" id="arr-apikey">▸</span>
+      </div>
+      <div class="ss-body" id="body-apikey">
+        <p>To generate recipes, you need a free Claude API key from Anthropic.</p>
+        <ol>
+          <li>Go to <strong>console.anthropic.com</strong></li>
+          <li>Sign up free → go to <strong>API Keys</strong></li>
+          <li>Create a key → copy it → paste below</li>
+        </ol>
+        <p style="color:rgba(240,160,64,.9)">⚠ Your key is stored only on this device and never sent anywhere except Anthropic's API.</p>
+        <label>Claude API Key</label>
+        <div class="url-row">
+          <input type="password" id="api-key-input" placeholder="sk-ant-..." aria-label="Claude API key">
+          <button class="btn btn-primary btn-sm" onclick="saveApiKey()">Save</button>
+        </div>
+        <div id="api-key-status" class="sync-no"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="recipe-output"></div>
+</div><!-- ── RECEIPT ────────────────────────────────────────────────────── -->
+<div class="panel" id="panel-receipt">
+
+  <!-- CAPTURE SCREEN -->
+  <div id="receipt-capture-screen">
+    <div style="font-family:var(--display);font-size:1rem;font-weight:700;margin-bottom:4px">📄 Scan a Receipt</div>
+    <p style="color:var(--muted);font-size:.78rem;line-height:1.6;margin-bottom:14px">Take or upload a photo of your grocery receipt. AI will read every item and suggest where to put it.</p>
+
+    <div class="receipt-capture" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <label class="receipt-capture-btn" for="receipt-file-cam">
+        <span class="rc-icon">📷</span>
+        <span class="rc-label">Take Photo</span>
+        <span class="rc-sub">Use camera</span>
+      </label>
+      <label class="receipt-capture-btn" for="receipt-file-lib">
+        <span class="rc-icon">🖼️</span>
+        <span class="rc-label">Photo Library</span>
+        <span class="rc-sub">Pick existing</span>
+      </label>
+    </div>
+
+    <!-- Hidden file inputs -->
+    <input type="file" id="receipt-file-cam" accept="image/*" capture="environment" style="display:none" onchange="handleReceiptFile(this)">
+    <input type="file" id="receipt-file-lib" accept="image/*" style="display:none" onchange="handleReceiptFile(this)">
+
+    <div class="receipt-tip">
+      📋 Lay receipt flat • Good lighting • Hold camera still<br>
+      Works with most major grocery stores
+    </div>
+
+    <div id="receipt-key-warning" style="display:none;margin-top:12px">
+      <div class="status-bar error show">
+        <span>⚠ Claude API key needed for receipt scanning. Add it in the <strong>Recipes</strong> tab first.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREVIEW + PROCESS SCREEN -->
+  <div id="receipt-process-screen" style="display:none">
+    <div class="receipt-preview-wrap">
+      <img id="receipt-preview-img" src="" alt="Receipt preview">
+      <button class="receipt-preview-clear" onclick="resetReceiptScreen()" aria-label="Clear">✕</button>
+    </div>
+    <div id="receipt-processing" class="receipt-processing">
+      <div class="rp-icon">🔍</div>
+      <strong>Reading your receipt...</strong>
+      <p>AI is identifying items, quantities and suggested locations</p>
+      <div style="margin-top:12px">
+        <div class="ai-dot" style="display:inline-block;margin:0 3px"></div>
+        <div class="ai-dot" style="display:inline-block;margin:0 3px"></div>
+        <div class="ai-dot" style="display:inline-block;margin:0 3px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPROVAL SCREEN -->
+  <div id="receipt-approval-screen" style="display:none">
+    <div class="approval-header">
+      <h3 id="approval-title">Review Items</h3>
+      <button class="select-all-btn" onclick="toggleSelectAll()" id="select-all-btn">Select All</button>
+    </div>
+    <p style="color:var(--muted);font-size:.74rem;margin-bottom:10px" id="approval-subtitle"></p>
+    <div id="approval-list"></div>
+    <div class="approve-footer">
+      <div class="approve-count" id="approve-count"></div>
+      <button class="btn btn-primary" onclick="approveItems()" id="approve-btn">✓ Add to Inventory</button>
+    </div>
+  </div>
+
+  <!-- SUMMARY SCREEN -->
+  <div id="receipt-summary-screen" class="summary-screen">
+    <div class="summary-hero">
+      <div class="summary-check">✅</div>
+      <h2 id="summary-title">Items Added!</h2>
+      <p id="summary-subtitle"></p>
+    </div>
+    <div class="summary-section" id="summary-by-location">
+      <h3>By Location</h3>
+      <div id="summary-location-list"></div>
+    </div>
+    <div class="summary-section" id="summary-updated-section" style="display:none">
+      <h3>Updated Existing Items</h3>
+      <div id="summary-updated-list"></div>
+    </div>
+    <div class="summary-btns">
+      <button class="btn btn-secondary" onclick="resetReceiptScreen()">📄 Scan Another</button>
+      <button class="btn btn-primary" onclick="switchTab('stock')">📦 View Stock</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── SETUP ──────────────────────────────────────────────────────── -->
+<div class="panel" id="panel-setup">
+
+  <!-- Locations -->
+  <div class="ss">
+    <div class="ss-hdr" onclick="toggleSetup('locs')">
+      <div class="ss-icon">📍</div>
+      <h3>Locations</h3>
+      <span class="ss-arrow" id="arr-locs">▸</span>
+    </div>
+    <div class="ss-body" id="body-locs">
+      <p>Name the places you store things — Kitchen, Pantry, Garage, etc. Keep it simple.</p>
+      <div id="loc-list"></div>
+      <div class="add-row">
+        <input type="text" id="new-loc" placeholder="New location..." onkeydown="if(event.key==='Enter')addLoc()">
+        <button class="btn btn-secondary btn-sm" onclick="addLoc()">+ Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change PIN -->
+  <div class="ss">
+    <div class="ss-hdr" onclick="toggleSetup('pin')">
+      <div class="ss-icon">🔒</div>
+      <h3>Change PIN</h3>
+      <span class="ss-arrow" id="arr-pin">▸</span>
+    </div>
+    <div class="ss-body" id="body-pin">
+      <p>Default PIN is <strong>1234</strong>. Change it here.</p>
+      <label>Current PIN</label>
+      <input type="password" id="cur-pin" inputmode="numeric" maxlength="4" placeholder="Current PIN">
+      <label>New PIN</label>
+      <input type="password" id="new-pin" inputmode="numeric" maxlength="4" placeholder="4 digits">
+      <label>Confirm New PIN</label>
+      <input type="password" id="conf-pin" inputmode="numeric" maxlength="4" placeholder="Repeat new PIN">
+      <button class="btn btn-primary" onclick="changePin()" style="margin-top:10px">Update PIN</button>
+      <div id="pin-change-msg" style="font-size:.72rem;margin-top:6px"></div>
+    </div>
+  </div>
+
+  <!-- Google Sheets -->
+  <div class="ss">
+    <div class="ss-hdr" onclick="toggleSetup('sheets')">
+      <div class="ss-icon">📊</div>
+      <h3>Google Sheets Sync</h3>
+      <span class="ss-arrow" id="arr-sheets">▸</span>
+    </div>
+    <div class="ss-body" id="body-sheets">
+      <p><strong style="color:var(--text)">Step 1</strong> — Go to <strong>sheets.new</strong>, create a blank sheet.</p>
+      <p><strong style="color:var(--text)">Step 2</strong> — In your Sheet: <span class="kbd">Extensions</span> → <span class="kbd">Apps Script</span>. Delete existing code, paste this:</p>
+      <button class="btn btn-secondary btn-sm" onclick="copyScript()" style="margin-bottom:7px">📋 Copy Script</button>
+      <div class="code-block" id="script-block">function doPost(e) {
+```
+
+try {
+const ss = SpreadsheetApp.getActiveSpreadsheet();
+let sh = ss.getSheetByName(“Inventory”);
+if (!sh) {
+sh = ss.insertSheet(“Inventory”);
+const h = [“Timestamp”,“UPC”,“Name”,“Brand”,
+“Category”,“Qty”,“Location Type”,“Location”,“Notes”];
+sh.appendRow(h);
+sh.setFrozenRows(1);
+sh.getRange(1,1,1,h.length)
+.setBackground(”#1c1f28”).setFontColor(”#00e5a0”)
+.setFontWeight(“bold”);
+sh.setColumnWidth(3,220);
+}
+const d = JSON.parse(e.postData.contents);
+sh.appendRow([new Date().toLocaleString(“en-US”),
+d.upc,d.name,d.brand,d.category,
+d.qty,d.locationType,d.location,d.notes||””]);
+return ContentService
+.createTextOutput(JSON.stringify({ok:true}))
+.setMimeType(ContentService.MimeType.JSON);
+} catch(err) {
+return ContentService
+.createTextOutput(JSON.stringify({ok:false,error:err.message}))
+.setMimeType(ContentService.MimeType.JSON);
+}
+}
+function doGet() {
+const sh = SpreadsheetApp.getActiveSpreadsheet()
+.getSheetByName(“Inventory”);
+if (!sh) return ContentService.createTextOutput(”[]”)
+.setMimeType(ContentService.MimeType.JSON);
+const rows = sh.getDataRange().getValues();
+const h = rows[0];
+return ContentService
+.createTextOutput(JSON.stringify(
+rows.slice(1).map(r=>{const o={};h.forEach((k,i)=>o[k]=r[i]);return o;})
+)).setMimeType(ContentService.MimeType.JSON);
+}</div>
+<p><strong style="color:var(--text)">Step 3</strong> — <span class="kbd">Deploy</span> → <span class="kbd">New Deployment</span> → Web app → Execute as: <span class="kbd">Me</span> → Who has access: <span class="kbd">Anyone</span> → Deploy → copy the URL.</p>
+<p><strong style="color:var(--text)">Step 4</strong> — Paste URL here:</p>
+<div class="url-row">
+<input type="url" id="sheets-url" placeholder="https://script.google.com/macros/s/...">
+<button class="btn btn-primary btn-sm" onclick="saveSheetURL()">Save</button>
+</div>
+<div id="sheets-status" class="sync-no"></div>
+<button class="btn btn-secondary" onclick="testSync()" style="margin-top:9px">🧪 Test Connection</button>
+</div>
+</div>
+
+```
+  <!-- Export -->
+  <div class="ss">
+    <div class="ss-hdr" onclick="toggleSetup('export')">
+      <div class="ss-icon">⬇️</div>
+      <h3>Export Data</h3>
+      <span class="ss-arrow" id="arr-export">▸</span>
+    </div>
+    <div class="ss-body" id="body-export">
+      <p>Download your full inventory as a CSV spreadsheet file.</p>
+      <button class="btn btn-secondary" onclick="exportCSV()">⬇ Download CSV</button>
+    </div>
+  </div>
+
+  <!-- Danger -->
+  <div class="ss" style="border-color:rgba(232,85,85,.2)">
+    <div class="ss-hdr" onclick="toggleSetup('danger')">
+      <div class="ss-icon" style="background:rgba(232,85,85,.15)">⚠️</div>
+      <h3>Clear All Data</h3>
+      <span class="ss-arrow" id="arr-danger">▸</span>
+    </div>
+    <div class="ss-body" id="body-danger">
+      <p>Permanently deletes all inventory on this device. Cannot be undone.</p>
+      <button class="btn btn-danger" onclick="clearAll()">🗑 Delete All Inventory</button>
+    </div>
+  </div>
+</div>
+```
+
+  </div><!-- /scroll-area -->
+
+  <!-- BOTTOM TAB BAR -->
+
+  <nav class="tab-bar" role="tablist">
+    <div class="tab active" onclick="switchTab('scan')" role="tab">
+      <span class="tab-icon">📷</span>Scan
+    </div>
+    <div class="tab" onclick="switchTab('stock')" role="tab">
+      <span class="tab-icon">📦</span>Stock
+    </div>
+    <div class="tab" onclick="switchTab('list')" role="tab">
+      <span class="tab-icon">🛒</span>List
+    </div>
+    <div class="tab" onclick="switchTab('receipt')" role="tab">
+      <span class="tab-icon">🧾</span>Receipt
+    </div>
+    <div class="tab" onclick="switchTab('recipes')" role="tab">
+      <span class="tab-icon">🍳</span>Recipes
+    </div>
+    </div>
+    <div class="tab" onclick="switchTab('setup')" role="tab">
+      <span class="tab-icon">⚙️</span>Setup
+    </div>
+  </nav>
+</div><!-- /app -->
+
+<!-- EDIT MODAL -->
+
+<div id="edit-modal" onclick="closeEditModal(event)">
+  <div class="modal-sheet" id="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">Edit Item</div>
+    <input type="hidden" id="edit-id">
+    <label>Name</label>
+    <input type="text" id="edit-name">
+    <label>Brand</label>
+    <input type="text" id="edit-brand">
+    <div class="g2">
+      <div>
+        <label>Quantity</label>
+        <div class="qty-row" style="margin-top:5px">
+          <button class="qty-btn" onclick="editQtyAdj(-1)">−</button>
+          <input type="number" id="edit-qty" style="text-align:center;min-height:44px">
+          <button class="qty-btn" onclick="editQtyAdj(1)">+</button>
+        </div>
+      </div>
+      <div>
+        <label>Low Stock At</label>
+        <input type="number" id="edit-low" placeholder="e.g. 2" min="0">
+      </div>
+    </div>
+    <label>Category</label>
+    <select id="edit-cat">
+      <option>Food &amp; Beverage</option><option>Household Supplies</option>
+      <option>Electronics</option><option>Clothing &amp; Accessories</option>
+      <option>Health &amp; Beauty</option><option>Office Supplies</option>
+      <option>Tools &amp; Hardware</option><option>Toys &amp; Games</option>
+      <option>Books &amp; Media</option><option>Pet Supplies</option>
+      <option>Sports &amp; Outdoors</option><option>Automotive</option><option>Other</option>
+    </select>
+    <label>Location</label>
+    <select id="edit-loc"></select>
+    <label>Notes</label>
+    <input type="text" id="edit-notes" placeholder="Expiry, condition...">
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="assertive"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════
+// STATE & CONSTANTS
+// ══════════════════════════════════════════════════════════════════════════
+let inventory    = JSON.parse(localStorage.getItem('sk_inv')   || '[]');
+let shoppingList = JSON.parse(localStorage.getItem('sk_shop')  || '[]');
+let sheetsURL    = localStorage.getItem('sk_url')  || '';
+let storedPIN    = localStorage.getItem('sk_pin')  || '';
+let claudeKey    = localStorage.getItem('sk_key')  || '';
+
+let locations    = JSON.parse(localStorage.getItem('sk_locs') || JSON.stringify(
+  ['Kitchen','Pantry','Fridge','Freezer','Garage','Bedroom','Bathroom','Office','Other']
+));
+
+let currentProduct  = null;
+let cameraActive    = false;
+let activeFilter    = 'all';
+let pinBuffer       = '';
+let obBuffer        = '';
+let obFirst         = '';
+let recipePref      = 'any';
+
+const CAT_ICONS = {
+  'Food & Beverage':'🍔','Household Supplies':'🧹','Electronics':'📱',
+  'Clothing & Accessories':'👕','Health & Beauty':'💊','Office Supplies':'📎',
+  'Tools & Hardware':'🔧','Toys & Games':'🎮','Books & Media':'📚',
+  'Pet Supplies':'🐾','Sports & Outdoors':'⛹️','Automotive':'🚗','Other':'📦'
+};
+// ══════════════════════════════════════════════════════════════════════════
+// ONBOARDING PIN
+// ══════════════════════════════════════════════════════════════════════════
+function obPinTap(d) {
+  if (obBuffer.length >= 4) return;
+  obBuffer += d; haptic();
+  updateDots('ob-d', obBuffer);
+  if (obBuffer.length === 4) setTimeout(processObPin, 150);
+}
+function obPinDel() { obBuffer = obBuffer.slice(0,-1); updateDots('ob-d', obBuffer); }
+
+function processObPin() {
+  if (!obFirst) {
+    obFirst = obBuffer; obBuffer = '';
+    updateDots('ob-d', obBuffer);
+    document.querySelector('#onboarding .ob-pin-label').textContent = 'Confirm your PIN';
+  } else if (obBuffer === obFirst) {
+    storedPIN = obBuffer;
+    localStorage.setItem('sk_pin', storedPIN);
+    document.getElementById('onboarding').classList.add('hidden');
+    document.getElementById('pin-screen').classList.add('hidden');
+    document.getElementById('app').classList.add('unlocked');
+  } else {
+    obFirst = ''; obBuffer = '';
+    updateDots('ob-d', obBuffer, true);
+    document.getElementById('ob-error').textContent = 'PINs do not match — try again';
+    haptic('error');
+    setTimeout(() => { updateDots('ob-d',''); document.getElementById('ob-error').textContent=''; }, 900);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PIN LOCK
+// ══════════════════════════════════════════════════════════════════════════
+function pinTap(d) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += d; haptic();
+  updateDots('d', pinBuffer);
+  showPinPreview(d);
+  if (pinBuffer.length === 4) setTimeout(processPin, 400);
+}
+function pinDel() {
+  pinBuffer = pinBuffer.slice(0,-1);
+  updateDots('d', pinBuffer);
+  const p = document.getElementById('pin-preview');
+  if (p) p.textContent = '●'.repeat(pinBuffer.length);
+}
+
+function processPin() {
+  const p = document.getElementById('pin-preview');
+  if (p) p.textContent = '';
+  if (pinBuffer === storedPIN) {
+    document.getElementById('pin-screen').classList.add('hidden');
+    document.getElementById('app').classList.add('unlocked');
+  } else {
+    updateDots('d', pinBuffer, true);
+    document.getElementById('pin-error').textContent = 'Incorrect PIN';
+    haptic('error');
+    setTimeout(() => { pinBuffer=''; updateDots('d',''); document.getElementById('pin-error').textContent=''; }, 900);
+  }
+}
+
+function updateDots(prefix, buf, error=false) {
+  for (let i=0;i<4;i++) {
+    const d = document.getElementById(prefix+i);
+    if (!d) return;
+    d.classList.toggle('filled', i < buf.length && !error);
+    d.classList.toggle('error', error);
+  }
+}
+
+function lockApp() {
+  pinBuffer = '';
+  updateDots('d','');
+  document.getElementById('pin-screen').classList.remove('hidden');
+  document.getElementById('app').classList.remove('unlocked');
+}
+
+function changePin() {
+  const cur  = document.getElementById('cur-pin').value;
+  const next = document.getElementById('new-pin').value;
+  const conf = document.getElementById('conf-pin').value;
+  const msg  = document.getElementById('pin-change-msg');
+  if (cur !== storedPIN)  { msg.textContent='✗ Current PIN incorrect'; msg.style.color='var(--danger)'; return; }
+  if (!/^\d{4}$/.test(next)) { msg.textContent='✗ Must be exactly 4 digits'; msg.style.color='var(--danger)'; return; }
+  if (next !== conf)      { msg.textContent='✗ PINs do not match'; msg.style.color='var(--danger)'; return; }
+  storedPIN = next; localStorage.setItem('sk_pin', storedPIN);
+  ['cur-pin','new-pin','conf-pin'].forEach(id => document.getElementById(id).value='');
+  msg.textContent='✓ PIN updated'; msg.style.color='var(--accent)';
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// INIT ROUTING
+// ══════════════════════════════════════════════════════════════════════════
+function init() {
+  if (!storedPIN) {
+    // First time — show onboarding
+    document.getElementById('pin-screen').classList.add('hidden');
+  } else {
+    // Returning user — show PIN screen
+    document.getElementById('onboarding').classList.add('hidden');
+  }
+  updateCount();
+  updateFilterChips();
+  updateLocDropdown();
+    if (claudeKey) { document.getElementById('api-key-status').textContent='✓ Key saved'; document.getElementById('api-key-status').className='sync-ok'; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════════════════════════════════
+const TAB_NAMES = ['scan','stock','list','receipt','recipes','setup'];
+
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  TAB_NAMES.forEach((t,i) => { if(t===name) document.querySelectorAll('.tab')[i].classList.add('active'); });
+  document.getElementById('scroll-area').scrollTop = 0;
+  if (name==='stock')  { renderInventory(); updateFilterChips(); }
+  if (name==='list')   renderShopping();
+  if (name==='setup')      { renderLocEditor(); updateSyncStatus(); if(sheetsURL) document.getElementById('sheets-url').value=sheetsURL; }
+  if (name==='receipt')    checkReceiptKey();
+  if (name==='recipes')    checkRecipeKey();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CAMERA — continuous auto-scan, no tap needed, works on iPhone Safari
+// ══════════════════════════════════════════════════════════════════════════
+// CAMERA — canvas frame scan, works on iPhone Safari without any library
+// Draws video frames to canvas, sends to BarcodeDetector or ZXing
+// ══════════════════════════════════════════════════════════════════════════
+let videoStream   = null;
+let scanLoop      = null;
+let scanCanvas    = null;
+let scanCtx       = null;
+let lastScanned   = '';
+let lastScannedAt = 0;
+
+function toggleCamera() { cameraActive ? stopCamera() : startCamera(); }
+
+async function startCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showScanStatus('Camera not supported. Use Safari on iPhone.','error'); return;
+  }
+  const container = document.getElementById('scanner-container');
+  const idle      = document.getElementById('scan-idle');
+  const btn       = document.getElementById('cam-btn');
+
+  btn.textContent = '⏹ Stop Camera';
+  btn.className   = 'scanning';
+  container.style.display = 'block';
+  idle.style.display = 'none';
+  showScanStatus('📷 Point camera at a barcode — reads automatically','info');
+
+  try {
+    // Build video element
+    let video = container.querySelector('video');
+    if (!video) {
+      video = document.createElement('video');
+      video.setAttribute('playsinline',''); // critical for iOS — no fullscreen
+      video.setAttribute('autoplay','');
+      video.setAttribute('muted','');
+      video.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0';
+      container.appendChild(video);
+    }
+
+    // Request rear camera
+    videoStream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720} },
+      audio: false
+    });
+    video.srcObject = videoStream;
+    await video.play();
+    cameraActive = true;
+
+    // Set up offscreen canvas for frame capture
+    if (!scanCanvas) {
+      scanCanvas = document.createElement('canvas');
+      scanCtx    = scanCanvas.getContext('2d');
+    }
+
+    // Try native BarcodeDetector first (Chrome Android, some iOS 17+)
+    if ('BarcodeDetector' in window) {
+      startNativeDetector(video);
+    } else {
+      // Fall back to canvas + fetch-based ZXing API approach
+      startCanvasScan(video);
+    }
+
+  } catch(err) {
+    stopCamera();
+    showScanStatus(
+      err.name === 'NotAllowedError'
+        ? 'Camera blocked — go to iPhone Settings → Safari → Camera → Allow'
+        : 'Camera error: ' + err.message,
+      'error'
+    );
+  }
+}
+
+// Method 1: Native BarcodeDetector (Chrome/Android, some iOS 17+)
+function startNativeDetector(video) {
+  const bd = new BarcodeDetector({
+    formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39']
+  });
+  (async function tick() {
+    if (!cameraActive) return;
+    try {
+      if (video.readyState >= 2) {
+        const codes = await bd.detect(video);
+        if (codes.length) { onCodeDetected(codes[0].rawValue); return; }
+      }
+    } catch(e) {}
+    scanLoop = setTimeout(tick, 250);
+  })();
+}
+
+// Method 2: Canvas frame scan — draw frame, read pixels, decode via ZXing WASM
+// Uses ZXing's open REST endpoint (no API key, no library download needed)
+function startCanvasScan(video) {
+  let scanning = false;
+  (async function tick() {
+    if (!cameraActive) return;
+    if (!scanning && video.readyState >= 2) {
+      scanning = true;
+      try {
+        scanCanvas.width  = video.videoWidth  || 640;
+        scanCanvas.height = video.videoHeight || 480;
+        scanCtx.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
+        scanCanvas.toBlob(async (blob) => {
+          if (!blob || !cameraActive) { scanning = false; return; }
+          try {
+            const fd = new FormData();
+            fd.append('file', blob, 'frame.jpg');
+            const r = await fetch('https://api.qrserver.com/v1/read-qr-code/?outputformat=json', {
+              method:'POST', body: fd
+            });
+            const data = await r.json();
+            const symbol = data?.[0]?.symbol?.[0];
+            if (symbol?.data && symbol.data !== 'null' && symbol.error === null) {
+              onCodeDetected(symbol.data);
+              scanning = false;
+              return;
+            }
+          } catch(e) {}
+          scanning = false;
+        }, 'image/jpeg', 0.85);
+      } catch(e) { scanning = false; }
+    }
+    scanLoop = setTimeout(tick, 600);
+  })();
+}
+
+function onCodeDetected(code) {
+  const now = Date.now();
+  if (code === lastScanned && now - lastScannedAt < 3000) {
+    scanLoop = setTimeout(() => {
+      const video = document.querySelector('#scanner-container video');
+      if (video && cameraActive) {
+        if ('BarcodeDetector' in window) startNativeDetector(video);
+        else startCanvasScan(video);
+      }
+    }, 400);
+    return;
+  }
+  lastScanned   = code;
+  lastScannedAt = now;
+  haptic();
+  document.getElementById('upc-input').value = code;
+  stopCamera();
+  lookupUPC();
+}
+
+function stopCamera() {
+  clearTimeout(scanLoop); scanLoop = null;
+
+  // Kill video stream
+  if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
+
+  cameraActive = false;
+  document.getElementById('scanner-container').style.display = 'none';
+  document.getElementById('scan-idle').style.display = 'block';
+  const btn = document.getElementById('cam-btn');
+  btn.textContent = '📷 Scan Barcode';
+  btn.className   = 'idle';
+  hideScanStatus();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// UPC LOOKUP — 3 sources + leading-zero padding
+// ══════════════════════════════════════════════════════════════════════════
+async function lookupUPC() {
+  let upc = document.getElementById('upc-input').value.trim().replace(/\D/g,'');
+  if (!upc) { showScanStatus('Enter a barcode number first','error'); return; }
+
+  // Pad to 12 digits if shorter (handles 10-digit codes like 1600012399)
+  if (upc.length < 12) upc = upc.padStart(12,'0');
+  document.getElementById('upc-input').value = upc;
+
+  showScanStatus('🔍 Looking up...','loading');
+  document.getElementById('product-card').classList.remove('visible');
+
+  // 1. Open Food Facts (great for grocery/food)
+  try {
+    const r = await fetch('https://world.openfoodfacts.org/api/v0/product/'+upc+'.json');
+    const d = await r.json();
+    if (d.status===1 && d.product) {
+      const p=d.product;
+      currentProduct={ upc, source:'Open Food Facts',
+        name: p.product_name||p.product_name_en||'',
+        brand: p.brands||'',
+        category: detectCat(p.categories||'', p.product_name||'', 'Food & Beverage') };
+      if (currentProduct.name) { fillCard(currentProduct); showScanStatus('✓ Found — check details below','success'); return; }
+    }
+  } catch(e){}
+
+  // 2. UPC Item DB (general retail)
+  try {
+    const r = await fetch('https://api.upcitemdb.com/prod/trial/lookup?upc='+upc);
+    const d = await r.json();
+    if (d.code==='OK' && d.items?.length) {
+      const item=d.items[0];
+      currentProduct={ upc, source:'UPC Item DB',
+        name: item.title||'',
+        brand: item.brand||'',
+        category: detectCat(item.category||'', item.title||'', 'Other') };
+      if (currentProduct.name) { fillCard(currentProduct); showScanStatus('✓ Found — check details below','success'); return; }
+    }
+  } catch(e){}
+
+  // 3. Go-UPC (1 billion products, broad coverage)
+  try {
+    const r = await fetch('https://go-upc.com/api/v1/code/'+upc, {
+      headers:{ 'Authorization': 'Bearer free' }
+    });
+    const d = await r.json();
+    if (d.product?.name) {
+      currentProduct={ upc, source:'Go-UPC',
+        name: d.product.name||'',
+        brand: d.product.brand||'',
+        category: detectCat(d.product.category||'', d.product.name||'', 'Other') };
+      fillCard(currentProduct); showScanStatus('✓ Found — check details below','success'); return;
+    }
+  } catch(e){}
+
+  // 4. Not found — manual entry
+  currentProduct={ upc, source:'Manual', name:'', brand:'', category:'Other' };
+  fillCard(currentProduct, true);
+  showScanStatus('Not found in database — tap name and brand below to fill in manually','info');
+}
+
+function detectCat(cat, name, fb) {
+  const s=(cat+' '+name).toLowerCase();
+  if(/food|snack|drink|beverage|coffee|tea|soda|juice|cereal|bread|candy|chip|sauce|oil|flour|sugar|pasta|rice|soup|frozen|dairy|milk|cheese|egg|meat|fruit|vegetable|spice|condiment|beer|wine|water|biscuit|cracker|jam/.test(s)) return 'Food & Beverage';
+  if(/cleaning|detergent|toilet|tissue|soap|trash|bag|broom|mop|sponge|household|laundry|bleach|dishwash/.test(s)) return 'Household Supplies';
+  if(/phone|tablet|laptop|cable|charger|battery|electronic|headphone|speaker|camera|monitor|keyboard|mouse|tv|remote|usb/.test(s)) return 'Electronics';
+  if(/shirt|pants|shoes|jacket|dress|clothing|apparel|sock|underwear|hat|wallet|watch|jewelry|boots|glove/.test(s)) return 'Clothing & Accessories';
+  if(/medicine|vitamin|supplement|shampoo|toothpaste|deodorant|lotion|health|beauty|cosmetic|makeup|skincare|razor|bandage/.test(s)) return 'Health & Beauty';
+  if(/pen|pencil|paper|notebook|binder|staple|tape|office|folder|file|label|envelope|printer/.test(s)) return 'Office Supplies';
+  if(/hammer|drill|screw|nail|wrench|tool|hardware|paint|bolt|nut|washer|saw|level/.test(s)) return 'Tools & Hardware';
+  if(/toy|game|puzzle|lego|doll|board game|card game|action figure/.test(s)) return 'Toys & Games';
+  if(/book|magazine|dvd|blu-ray|cd|vinyl|media|film|movie/.test(s)) return 'Books & Media';
+  if(/dog|cat|pet|animal|bird|fish|aquarium|kibble|treat|litter/.test(s)) return 'Pet Supplies';
+  if(/sport|outdoor|bike|tent|hiking|gym|fitness|yoga|ball/.test(s)) return 'Sports & Outdoors';
+  if(/car|auto|tire|wiper|brake|motor oil/.test(s)) return 'Automotive';
+  return fb;
+}
+
+function fillCard(p, manual=false) {
+  const ne=document.getElementById('prod-name'), be=document.getElementById('prod-brand');
+  ne.textContent = p.name||(manual?'Tap to enter name...':'');
+  be.textContent = p.brand||(manual?'Tap to enter brand...':'');
+  ne.contentEditable = manual?'true':'false';
+  be.contentEditable = manual?'true':'false';
+  document.getElementById('prod-cat-tag').textContent  = p.category;
+  document.getElementById('prod-upc-tag').textContent  = 'UPC: '+p.upc;
+  document.getElementById('prod-source-tag').textContent = p.source;
+  document.getElementById('prod-thumb').textContent    = CAT_ICONS[p.category]||'📦';
+  document.getElementById('cat-override').value        = '';
+  document.getElementById('prod-notes').value          = '';
+  document.getElementById('qty-input').value           = 1;
+  document.getElementById('product-card').classList.add('visible');
+  setTimeout(() => document.getElementById('product-card').scrollIntoView({behavior:'smooth',block:'nearest'}), 80);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// LOCATION
+// ══════════════════════════════════════════════════════════════════════════
+function updateLocDropdown() {
+  ['loc-select','edit-loc'].forEach(id => {
+    const sel = document.getElementById(id); if (!sel) return;
+    sel.innerHTML = locations.length
+      ? locations.map(l => `<option>${escHtml(l)}</option>`).join('')
+      : '<option>Add locations in Setup</option>';
+  });
+}
+
+function adjustQty(d) { const i=document.getElementById('qty-input'); i.value=Math.max(1,(parseInt(i.value)||1)+d); haptic(); }
+
+// ══════════════════════════════════════════════════════════════════════════
+// ADD TO INVENTORY
+// ══════════════════════════════════════════════════════════════════════════
+async function addToInventory() {
+  if (!currentProduct) { showScanStatus('No product loaded','error'); return; }
+  const ne=document.getElementById('prod-name'), be=document.getElementById('prod-brand');
+  const item={
+    id: Date.now(), upc: currentProduct.upc,
+    name:  (ne.textContent||ne.innerText||'Unknown').trim(),
+    brand: (be.textContent||be.innerText||'').trim(),
+    category: document.getElementById('cat-override').value || currentProduct.category,
+    qty:  parseInt(document.getElementById('qty-input').value)||1,
+    lowStock: 0,
+    locationType: 'room',
+    location: document.getElementById('loc-select').value || locations[0] || '',
+    notes: document.getElementById('prod-notes').value,
+    addedAt: new Date().toISOString()
+  };
+  inventory.push(item); saveInv(); updateCount();
+  if (sheetsURL) { try { await fetch(sheetsURL,{method:'POST',body:JSON.stringify(item),headers:{'Content-Type':'application/json'}}); } catch(e){} }
+  haptic('success');
+  showToast('✓ '+item.name+' added!','success');
+  clearScan(); updateFilterChips();
+}
+
+function clearScan() {
+  document.getElementById('upc-input').value='';
+  document.getElementById('product-card').classList.remove('visible');
+  hideScanStatus(); currentProduct=null;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// INVENTORY RENDER
+// ══════════════════════════════════════════════════════════════════════════
+function renderInventory() {
+  const list   = document.getElementById('inventory-list');
+  const query  = (document.getElementById('inv-search')?.value||'').toLowerCase().trim();
+  let filtered = activeFilter==='all' ? [...inventory] : inventory.filter(i=>i.category===activeFilter);
+  if (query) filtered=filtered.filter(i=>(i.name+i.brand+i.location+i.notes).toLowerCase().includes(query));
+
+  if (!inventory.length) {
+    list.innerHTML='<div class="empty"><div class="ei">📦</div>Nothing scanned yet.<br>Go to Scan to add your first item.</div>'; return;
+  }
+  if (!filtered.length) {
+    list.innerHTML='<div class="empty"><div class="ei">🔍</div>No matches found.</div>'; return;
+  }
+
+  list.innerHTML=filtered.map(item => {
+    const low = item.lowStock>0 && item.qty<=item.lowStock;
+    return `<div class="inv-item" role="listitem">
+      <div class="inv-icon">${CAT_ICONS[item.category]||'📦'}</div>
+      <div class="inv-info">
+        <div class="inv-name">${escHtml(item.name)}</div>
+        <div class="inv-meta">
+          <span class="loc-badge">${'📍'} ${escHtml(item.location)}</span>
+          <span class="qty-badge ${low?'low':'ok'}">×${item.qty}${low?' ⚠':''}</span>
+          ${item.notes?`<span>${escHtml(item.notes)}</span>`:''}
+        </div>
+      </div>
+      <div class="inv-actions">
+        <button class="icon-btn" title="Add to list" aria-label="Add to shopping list" onclick="addToShopping(${item.id})">🛒</button>
+        <button class="icon-btn" title="Edit" aria-label="Edit item" onclick="openEdit(${item.id})">✏️</button>
+        <button class="icon-btn" title="Remove" aria-label="Remove item" onclick="removeItem(${item.id})" style="color:var(--danger)">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateFilterChips() {
+  const bar=document.getElementById('filter-bar');
+  const cats=[...new Set(inventory.map(i=>i.category))].sort();
+  bar.innerHTML=`<div class="fchip ${activeFilter==='all'?'active':''}" onclick="filterBy('all',this)">All (${inventory.length})</div>`;
+  cats.forEach(c=>{
+    const n=inventory.filter(i=>i.category===c).length;
+    bar.innerHTML+=`<div class="fchip ${activeFilter===c?'active':''}" onclick="filterBy(${JSON.stringify(c)},this)">${CAT_ICONS[c]||''} ${escHtml(c)} (${n})</div>`;
+  });
+}
+
+function filterBy(cat, el) {
+  activeFilter=cat;
+  document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active'); renderInventory();
+}
+
+function removeItem(id) {
+  if (!confirm('Remove this item?')) return;
+  inventory=inventory.filter(i=>i.id!==id);
+  saveInv(); updateCount(); renderInventory(); updateFilterChips();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// EDIT MODAL
+// ══════════════════════════════════════════════════════════════════════════
+function openEdit(id) {
+  const item=inventory.find(i=>i.id===id); if(!item) return;
+  document.getElementById('edit-id').value    = id;
+  document.getElementById('edit-name').value  = item.name;
+  document.getElementById('edit-brand').value = item.brand||'';
+  document.getElementById('edit-qty').value   = item.qty;
+  document.getElementById('edit-low').value   = item.lowStock||'';
+  document.getElementById('edit-notes').value = item.notes||'';
+  document.getElementById('edit-cat').value   = item.category;
+  document.getElementById('modal-title').textContent = item.name;
+  updateLocDropdown();
+  setTimeout(()=>{
+    const sel=document.getElementById('edit-loc');
+    [...sel.options].forEach((o,i)=>{if(o.text===item.location)sel.selectedIndex=i;});
+  },30);
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function editQtyAdj(d) { const i=document.getElementById('edit-qty'); i.value=Math.max(0,(parseInt(i.value)||0)+d); haptic(); }
+
+function saveEdit() {
+  const id=parseInt(document.getElementById('edit-id').value);
+  const item=inventory.find(i=>i.id===id); if(!item) return;
+  item.name     = document.getElementById('edit-name').value.trim()||item.name;
+  item.brand    = document.getElementById('edit-brand').value.trim();
+  item.qty      = Math.max(0,parseInt(document.getElementById('edit-qty').value)||0);
+  item.lowStock = parseInt(document.getElementById('edit-low').value)||0;
+  item.category = document.getElementById('edit-cat').value;
+  item.location = document.getElementById('edit-loc').value;
+  item.notes    = document.getElementById('edit-notes').value.trim();
+  saveInv(); closeEditModal(); renderInventory(); updateCount();
+  showToast('✓ Changes saved','success');
+}
+
+function closeEditModal(e) {
+  if (e && e.target !== document.getElementById('edit-modal')) return;
+  document.getElementById('edit-modal').classList.remove('open');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SHOPPING LIST
+// ══════════════════════════════════════════════════════════════════════════
+function addToShopping(id) {
+  const item=inventory.find(i=>i.id===id); if(!item) return;
+  if (shoppingList.find(s=>s.name===item.name)) { showToast('"'+item.name+'" already on list'); return; }
+  shoppingList.push({id:Date.now(),name:item.name,qty:item.qty,checked:false});
+  saveShop(); haptic(); showToast('🛒 Added to list','success'); }
+
+function addShopManual() {
+  const inp=document.getElementById('shop-manual-input');
+  const val=inp.value.trim(); if(!val) return;
+  if (shoppingList.find(s=>s.name.toLowerCase()===val.toLowerCase())) { showToast('Already on list'); return; }
+  shoppingList.push({id:Date.now(),name:val,qty:1,checked:false});
+  inp.value=''; saveShop(); renderShopping(); haptic();
+}
+
+function renderShopping() {
+  const list=document.getElementById('shopping-list');
+  const actions=document.getElementById('shop-actions');
+  if (!shoppingList.length) {
+    list.innerHTML='<div class="empty"><div class="ei">🛒</div>Your list is empty.<br>Tap 🛒 on any inventory item,<br>or type an item above.</div>';
+    actions.style.display='none'; return;
+  }
+  actions.style.display='block';
+  list.innerHTML=shoppingList.map(item=>`
+    <div class="shop-item" role="listitem">
+      <div class="chk ${item.checked?'checked':''}" role="checkbox" aria-checked="${item.checked}"
+        aria-label="${item.checked?'Uncheck':'Check'} ${escHtml(item.name)}"
+        tabindex="0" onclick="toggleCheck(${item.id})" onkeydown="if(event.key===' ')toggleCheck(${item.id})"></div>
+      <div class="shop-name" style="${item.checked?'text-decoration:line-through;color:var(--muted)':''}">${escHtml(item.name)}</div>
+      <div class="shop-qty">×${item.qty}</div>
+      <button class="icon-btn" aria-label="Remove" onclick="rmShop(${item.id})" style="color:var(--danger)">✕</button>
+    </div>`).join('');
+}
+
+function toggleCheck(id) { const i=shoppingList.find(x=>x.id===id); if(i){i.checked=!i.checked;haptic();} saveShop(); renderShopping(); }
+function rmShop(id) { shoppingList=shoppingList.filter(i=>i.id!==id); saveShop(); renderShopping(); }
+function clearChecked() { shoppingList=shoppingList.filter(i=>!i.checked); saveShop(); renderShopping(); }
+
+function exportAnyList() {
+  const text=shoppingList.map(i=>i.name+(i.qty>1?' ('+i.qty+')':'')).join('\n');
+  navigator.clipboard.writeText(text).then(()=>showToast('✓ Copied for AnyList','success')).catch(()=>prompt('Copy this:',text));
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// RECIPES — AI
+// ══════════════════════════════════════════════════════════════════════════
+function checkRecipeKey() {
+  const sec=document.getElementById('recipe-key-section');
+  sec.style.display = claudeKey ? 'none' : 'block';
+  if (!claudeKey) toggleSetup('apikey');
+}
+
+function saveApiKey() {
+  claudeKey=document.getElementById('api-key-input').value.trim();
+  localStorage.setItem('sk_key', claudeKey);
+  const s=document.getElementById('api-key-status');
+  s.textContent='✓ Key saved'; s.className='sync-ok';
+  document.getElementById('recipe-key-section').style.display='none';
+  showToast('✓ API key saved','success');
+}
+
+function setRecipePref(el) {
+  document.querySelectorAll('.recipe-filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active'); recipePref=el.dataset.pref;
+}
+
+async function getRecipes() {
+  if (!claudeKey) { toggleSetup('apikey'); document.getElementById('recipe-key-section').style.display='block'; return; }
+
+  const foodItems = inventory.filter(i => i.category==='Food & Beverage' && i.qty>0);
+  if (foodItems.length < 2) {
+    document.getElementById('recipe-output').innerHTML=
+      '<div class="empty"><div class="ei">🍔</div>Add at least 2 food items to your inventory first.</div>';
+    return;
+  }
+
+  const btn=document.getElementById('recipe-btn');
+  btn.disabled=true; btn.textContent='✨ Thinking...';
+  document.getElementById('recipe-output').innerHTML=
+    '<div class="ai-thinking"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>Scanning your pantry...</span></div>';
+
+  const ingredientList = foodItems.map(i=>`${i.qty}x ${i.name}${i.brand?' ('+i.brand+')':''}`).join('\n');
+  const prefText = recipePref==='any' ? '' :
+    recipePref==='quick' ? ' Focus on recipes under 30 minutes.' :
+    ` Focus on ${recipePref} recipes.`;
+
+  const prompt = `I have these food items in my pantry:\n${ingredientList}\n\nSuggest 3 recipes I can make using mainly these ingredients.${prefText}\n\nFor each recipe use this exact format:\n**[Recipe Name]**\n⏱ [time] | 👤 [servings] | [difficulty: Easy/Medium]\n**Ingredients needed:** [list only ingredients from my pantry used]\n**Also need:** [any small extras like salt/oil/spices - keep brief]\n**Steps:**\n1. [step]\n2. [step]\n(etc.)\n---\nBe practical and use what I actually have. Keep steps concise.`;
+
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': claudeKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-calls': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        messages: [{ role:'user', content: prompt }]
+      })
+    });
+
+    if (!r.ok) {
+      const err=await r.json();
+      throw new Error(err.error?.message || 'API error '+r.status);
+    }
+
+    const data = await r.json();
+    const text = data.content?.[0]?.text || '';
+    renderRecipes(text, foodItems);
+  } catch(e) {
+    document.getElementById('recipe-output').innerHTML=
+      `<div class="empty"><div class="ei">⚠️</div>Recipe suggestion failed:<br><small style="color:var(--danger)">${escHtml(e.message)}</small><br><br>Check your API key in Setup.</div>`;
+  } finally {
+    btn.disabled=false; btn.textContent='✨ Suggest Recipes';
+  }
+}
+
+function renderRecipes(text, foodItems) {
+  const out = document.getElementById('recipe-output');
+  const recipes = text.split('---').map(s=>s.trim()).filter(Boolean);
+
+  if (!recipes.length) {
+    out.innerHTML='<div class="empty"><div class="ei">🍳</div>No recipes returned. Try again.</div>'; return;
+  }
+
+  out.innerHTML = recipes.map(recipe => {
+    const lines = recipe.split('\n');
+    const title = lines[0].replace(/\*\*/g,'').trim();
+    const meta  = lines[1]||'';
+    const body  = lines.slice(2).join('\n')
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+
+    const usedIngredients = foodItems
+      .filter(item => recipe.toLowerCase().includes(item.name.toLowerCase()))
+      .map(item => item.name);
+
+    return `<div class="recipe-card">
+      <h3>${escHtml(title)}</h3>
+      <div class="rc-meta">${escHtml(meta).split('|').map(m=>`<span>${m.trim()}</span>`).join('')}</div>
+      <div class="recipe-body">${body}</div>
+      ${usedIngredients.length ? `<div class="ingredients-used">From your pantry: ${usedIngredients.map(n=>`<span>${escHtml(n)}</span>`).join('')}</div>` : ''}
+      <button class="btn btn-secondary" style="margin-top:10px;font-size:.76rem;padding:8px 12px" onclick="addRecipeToList(this)" data-recipe="${escHtml(title)}">🛒 Add Missing Ingredients to List</button>
+    </div>`;
+  }).join('');
+}
+
+function addRecipeToList(btn) {
+  showToast('🛒 Check the recipe for extras to add manually');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+
+
+function copyNFCUrl(url) {
+  navigator.clipboard.writeText(url).then(()=>showToast('✓ URL copied','success')).catch(()=>prompt('Copy:',url));
+}
+
+async function writeNFC(url) {
+  if (!('NDEFReader' in window)) { showToast('Paste URL into NFC Tools app instead'); return; }
+  try {
+    const ndef=new NDEFReader();
+    await ndef.write({records:[{recordType:'url',data:url}]});
+    haptic('success'); showToast('✓ Tag written!','success');
+  } catch(e) { showToast('Write failed — use NFC Tools app'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SETUP HELPERS
+// ══════════════════════════════════════════════════════════════════════════
+function toggleSetup(key) {
+  const body=document.getElementById('body-'+key), arrow=document.getElementById('arr-'+key);
+  const open=body.classList.toggle('open');
+  if(arrow) arrow.style.transform=open?'rotate(90deg)':'';
+}
+
+function renderLocEditor() {
+  const list = document.getElementById('loc-list'); if(!list) return;
+  list.innerHTML = locations.length ? locations.map((name,i)=>`
+    <div class="loc-row-edit">
+      <input type="text" value="${escHtml(name)}" onchange="updateLoc(${i},this.value)">
+      <button class="icon-btn" onclick="removeLoc(${i})" style="color:var(--danger);width:40px;flex-shrink:0">✕</button>
+    </div>`).join('') : '<p style="color:var(--muted);font-size:.78rem;margin:8px 0">No locations yet — add one below.</p>';
+}
+
+function addLoc() {
+  const inp=document.getElementById('new-loc');
+  const val=inp.value.trim(); if(!val) return;
+  locations.push(val); inp.value='';
+  saveLocs(); renderLocEditor(); updateLocDropdown(); showToast('✓ Location added');
+}
+function removeLoc(i) { locations.splice(i,1); saveLocs(); renderLocEditor(); updateLocDropdown(); }
+function updateLoc(i,val) { locations[i]=val; saveLocs(); updateLocDropdown(); }
+
+function copyScript() {
+  const code=document.getElementById('script-block').textContent;
+  navigator.clipboard.writeText(code).then(()=>showToast('✓ Script copied','success')).catch(()=>alert('Copy manually'));
+}
+
+function saveSheetURL() {
+  sheetsURL=document.getElementById('sheets-url').value.trim();
+  localStorage.setItem('sk_url',sheetsURL); updateSyncStatus();
+  if(sheetsURL) showToast('✓ Sync URL saved','success');
+}
+
+function updateSyncStatus() {
+  const el=document.getElementById('sheets-status'); if(!el) return;
+  el.textContent=sheetsURL?'✓ Live sync active':'No URL saved';
+  el.className=sheetsURL?'sync-ok':'sync-no';
+}
+
+async function testSync() {
+  if(!sheetsURL){showToast('Save a URL first');return;}
+  showToast('🔄 Testing...');
+  const t={upc:'000000000000',name:'[Test]',brand:'Test',category:'Other',qty:1,locationType:'box',location:'Test',notes:'Delete me',addedAt:new Date().toISOString()};
+  try {
+    const r=await fetch(sheetsURL,{method:'POST',body:JSON.stringify(t),headers:{'Content-Type':'application/json'}});
+    const d=await r.json();
+    d.ok ? showToast('✓ Connected! Check your Sheet.','success') : showToast('Sheet error: '+d.error,'error');
+  } catch(e){ showToast('Connection failed','error'); }
+}
+
+function exportCSV() {
+  if(!inventory.length){showToast('Nothing to export');return;}
+  const h=['Timestamp','UPC','Name','Brand','Category','Qty','Location','Notes'];
+  const rows=inventory.map(i=>[i.addedAt,i.upc,'"'+i.name+'"','"'+i.brand+'"',i.category,i.qty,'"'+i.location+'"','"'+(i.notes||'')+'"'].join(','));
+  const a=Object.assign(document.createElement('a'),{
+    href:URL.createObjectURL(new Blob([[h.join(','),...rows].join('\n')],{type:'text/csv'})),
+    download:'inventory_'+new Date().toISOString().split('T')[0]+'.csv'
+  });
+  a.click();
+}
+
+function clearAll() {
+  if(!confirm('Delete ALL inventory?\n\nCannot be undone.')) return;
+  inventory=[]; shoppingList=[];
+  saveInv(); saveShop(); updateCount(); updateFilterChips();
+  showToast('All data cleared');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════════════════════════════════════════
+function showScanStatus(msg, type) {
+  const el=document.getElementById('scan-status');
+  el.innerHTML='<span>'+msg+'</span>';
+  el.className='status-bar '+type+' show';
+}
+function hideScanStatus() { document.getElementById('scan-status').className='status-bar'; }
+
+let toastTimer, toastQ=[];
+function showToast(msg, type='') {
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='show'+(type?' '+type:'');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.className='',2600);
+}
+
+
+
+
+let pinPreviewTimer;
+function showPinPreview(digit) {
+  const p = document.getElementById('pin-preview');
+  if (!p) return;
+  // Show dots for previous digits + the new digit briefly
+  const prev = '●'.repeat(pinBuffer.length - 1);
+  p.textContent = prev + digit;
+  clearTimeout(pinPreviewTimer);
+  pinPreviewTimer = setTimeout(() => {
+    p.textContent = '●'.repeat(pinBuffer.length);
+  }, 600);
+}
+
+function haptic(type) {
+  if(!navigator.vibrate) return;
+  if(type==='error') navigator.vibrate([50,30,50]);
+  else if(type==='success') navigator.vibrate(40);
+  else navigator.vibrate(12);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function saveInv()  { localStorage.setItem('sk_inv',  JSON.stringify(inventory)); }
+function saveShop() { localStorage.setItem('sk_shop', JSON.stringify(shoppingList)); }
+function saveLocs() { localStorage.setItem('sk_locs', JSON.stringify(locations)); }
+
+function updateCount() {
+  const t=inventory.reduce((s,i)=>s+i.qty,0);
+  document.getElementById('total-count').textContent=t+' item'+(t!==1?'s':'');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// RECEIPT SCANNING
+// ══════════════════════════════════════════════════════════════════════════
+let receiptItems = [];   // items parsed from receipt
+let receiptBase64 = '';  // image data
+
+function checkReceiptKey() {
+  const warn = document.getElementById('receipt-key-warning');
+  if (warn) warn.style.display = claudeKey ? 'none' : 'block';
+}
+
+function handleReceiptFile(input) {
+  if (!input.files || !input.files[0]) return;
+  if (!claudeKey) {
+    showToast('Add Claude API key in Recipes tab first', 'error'); return;
+  }
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    receiptBase64 = dataUrl.split(',')[1];
+    // Show preview
+    document.getElementById('receipt-capture-screen').style.display = 'none';
+    document.getElementById('receipt-process-screen').style.display = 'block';
+    document.getElementById('receipt-preview-img').src = dataUrl;
+    document.getElementById('receipt-processing').style.display = 'block';
+    processReceipt();
+  };
+  reader.readAsDataURL(file);
+  input.value = ''; // reset so same file can be re-selected
+}
+
+async function processReceipt() {
+  // Build location context so AI knows what locations exist
+  const allLocs = {
+    box: locations.box || [],
+    shelf: locations.shelf || [],
+    room: locations.room || []
+  };
+  const locSummary = [
+    ...allLocs.room.map(n => `room: ${n}`),
+    ...allLocs.shelf.map(n => `shelf: ${n}`),
+    ...allLocs.box.map(n => `box: ${n}`)
+  ].join(', ');
+
+  const prompt = `You are analyzing a grocery receipt image. Extract every purchased item and return ONLY valid JSON — no markdown, no explanation, just the raw JSON object.
+
+Available storage locations: ${locSummary || 'Kitchen, Pantry, Garage, Shelf A'}
+
+Rules:
+- Extract every line item that is a product (skip taxes, totals, store name, discounts)
+- For quantity: use the receipt quantity if shown (e.g. "2 @" means qty 2), otherwise default to 1
+- For confidence: "high" if product name is clear, "med" if partially readable, "low" if guessed
+- For locationType: choose from "room", "shelf", or "box"
+- For location: pick the most appropriate from the available locations based on the item category. Food/grocery → Kitchen or Pantry room. Cleaning/laundry → Garage or utility room. Default to first shelf if unsure.
+- For category: use one of these exactly: Food & Beverage, Household Supplies, Electronics, Health & Beauty, Office Supplies, Tools & Hardware, Pet Supplies, Other
+
+Return this exact JSON structure:
+{
+  "store": "store name or Unknown",
+  "date": "date from receipt or null",
+  "items": [
+    {
+      "name": "product name",
+      "brand": "brand if visible or empty string",
+      "qty": 1,
+      "category": "Food & Beverage",
+      "locationType": "room",
+      "location": "Kitchen",
+      "confidence": "high",
+      "rawText": "exactly as printed on receipt"
+    }
+  ]
+}`;
+
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': claudeKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-calls': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 4000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: receiptBase64 } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    if (!r.ok) {
+      const err = await r.json();
+      throw new Error(err.error?.message || 'API error ' + r.status);
+    }
+
+    const data = await r.json();
+    const text = data.content?.[0]?.text || '';
+
+    // Parse JSON — strip any accidental markdown fences
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    receiptItems = (parsed.items || []).map((item, i) => ({
+      ...item,
+      id: Date.now() + i,
+      selected: true,
+      qty: parseInt(item.qty) || 1
+    }));
+
+    showApprovalScreen(parsed.store, parsed.date);
+
+  } catch(e) {
+    document.getElementById('receipt-processing').innerHTML = `
+      <div style="font-size:2rem;margin-bottom:8px">⚠️</div>
+      <strong style="color:var(--danger)">Could not read receipt</strong>
+      <p style="margin-top:6px">${escHtml(e.message)}</p>
+      <button class="btn btn-secondary" style="margin-top:16px;max-width:240px" onclick="resetReceiptScreen()">← Try Again</button>`;
+  }
+}
+
+function showApprovalScreen(store, date) {
+  document.getElementById('receipt-processing').style.display = 'none';
+  document.getElementById('receipt-process-screen').style.display = 'none';
+  document.getElementById('receipt-approval-screen').style.display = 'block';
+
+  const total = receiptItems.length;
+  const uncertain = receiptItems.filter(i => i.confidence !== 'high').length;
+
+  document.getElementById('approval-title').textContent =
+    (store && store !== 'Unknown' ? store + ' — ' : '') + total + ' items found';
+  document.getElementById('approval-subtitle').textContent =
+    uncertain > 0
+      ? `⚠ ${uncertain} item${uncertain>1?'s':''} flagged for review — check amber items before approving`
+      : '✓ All items read with high confidence — approve below';
+
+  renderApprovalList();
+  updateApproveCount();
+}
+
+function renderApprovalList() {
+  // Sort: uncertain first, then confident
+  const sorted = [...receiptItems].sort((a,b) => {
+    const order = { low:0, med:1, high:2 };
+    return (order[a.confidence]||1) - (order[b.confidence]||1);
+  });
+
+  // Check which items already exist in inventory
+  const existingNames = new Set(inventory.map(i => i.name.toLowerCase().trim()));
+
+  const allLocs = [
+    ...( locations.room||[] ).map(n=>({type:'room',name:n})),
+    ...( locations.shelf||[] ).map(n=>({type:'shelf',name:n})),
+    ...( locations.box||[] ).map(n=>({type:'box',name:n}))
+  ];
+  const locOptions = allLocs.map(l =>
+    `<option value="${escHtml(l.type)}|${escHtml(l.name)}" ${''}>
+      ${'📍'} ${escHtml(l.name)}
+    </option>`
+  ).join('');
+
+  document.getElementById('approval-list').innerHTML = sorted.map(item => {
+    const confClass = item.confidence==='high'?'confident':item.confidence==='med'?'uncertain':'unconfident';
+    const confLabel = item.confidence==='high'?'✓ Confident':item.confidence==='med'?'⚠ Review':'? Low confidence';
+    const confBadge = item.confidence==='high'?'high':item.confidence==='med'?'med':'low';
+    const isExisting = existingNames.has(item.name.toLowerCase().trim());
+    const selectedLoc = item.locationType+'|'+item.location;
+
+    return `<div class="approval-item ${confClass}" id="ai-item-${item.id}">
+      <div class="ai-row">
+        <div class="ai-check ${item.selected?'checked':''}" onclick="toggleAiItem(${item.id})" role="checkbox" aria-checked="${item.selected}"></div>
+        <div class="ai-item-body">
+          <div class="ai-item-name">${escHtml(item.name)}${item.brand?` <span style="color:var(--muted);font-size:.76rem;font-weight:400">${escHtml(item.brand)}</span>`:''}</div>
+          <div class="ai-item-meta">
+            <span class="ai-conf-badge ${confBadge}">${confLabel}</span>
+            <span class="tag tag-cat" style="margin:0">${escHtml(item.category)}</span>
+            ${isExisting ? `<span class="ai-existing-badge">+adds to existing</span>` : ''}
+          </div>
+          <div class="ai-item-controls">
+            <div class="ai-qty-row">
+              <button class="ai-qty-btn" onclick="adjAiQty(${item.id},-1)">−</button>
+              <span class="ai-qty-val" id="ai-qty-${item.id}">${item.qty}</span>
+              <button class="ai-qty-btn" onclick="adjAiQty(${item.id},1)">+</button>
+            </div>
+            <select class="ai-loc-select" id="ai-loc-${item.id}" onchange="updateAiLoc(${item.id},this.value)" aria-label="Location">
+              ${allLocs.map(l => {
+                const val = l.type+'|'+l.name;
+                return `<option value="${escHtml(val)}" ${val===selectedLoc?'selected':''}>${'📍'} ${escHtml(l.name)}</option>`;
+              }).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleAiItem(id) {
+  const item = receiptItems.find(i => i.id === id);
+  if (!item) return;
+  item.selected = !item.selected;
+  const check = document.querySelector(`#ai-item-${id} .ai-check`);
+  if (check) { check.classList.toggle('checked', item.selected); check.setAttribute('aria-checked', item.selected); }
+  haptic();
+  updateApproveCount();
+}
+
+function adjAiQty(id, delta) {
+  const item = receiptItems.find(i => i.id === id);
+  if (!item) return;
+  item.qty = Math.max(1, item.qty + delta);
+  const el = document.getElementById('ai-qty-'+id);
+  if (el) el.textContent = item.qty;
+  haptic();
+}
+
+function updateAiLoc(id, val) {
+  const item = receiptItems.find(i => i.id === id);
+  if (!item) return;
+  const [type, name] = val.split('|');
+  item.locationType = type;
+  item.location = name;
+}
+
+function toggleSelectAll() {
+  const allSelected = receiptItems.every(i => i.selected);
+  receiptItems.forEach(i => i.selected = !allSelected);
+  renderApprovalList();
+  updateApproveCount();
+  document.getElementById('select-all-btn').textContent = allSelected ? 'Select All' : 'Deselect All';
+}
+
+function updateApproveCount() {
+  const n = receiptItems.filter(i => i.selected).length;
+  document.getElementById('approve-count').textContent = `${n} of ${receiptItems.length} items selected`;
+  document.getElementById('approve-btn').textContent = `✓ Add ${n} Item${n!==1?'s':''} to Inventory`;
+}
+
+function approveItems() {
+  const toAdd = receiptItems.filter(i => i.selected);
+  if (!toAdd.length) { showToast('No items selected'); return; }
+
+  const added = [];
+  const updated = [];
+
+  toAdd.forEach(item => {
+    const existing = inventory.find(i => i.name.toLowerCase().trim() === item.name.toLowerCase().trim());
+    if (existing) {
+      const prevQty = existing.qty;
+      existing.qty += item.qty;
+      updated.push({ name: item.name, from: prevQty, to: existing.qty });
+    } else {
+      const newItem = {
+        id: Date.now() + Math.random(),
+        upc: '',
+        name: item.name,
+        brand: item.brand || '',
+        category: item.category || 'Other',
+        qty: item.qty,
+        lowStock: 0,
+        locationType: item.locationType,
+        location: item.location,
+        notes: 'Added from receipt',
+        addedAt: new Date().toISOString()
+      };
+      inventory.push(newItem);
+      added.push(newItem);
+      // Sync to sheets if configured
+      if (sheetsURL) {
+        fetch(sheetsURL, { method:'POST', body:JSON.stringify(newItem), headers:{'Content-Type':'application/json'} }).catch(()=>{});
+      }
+    }
+  });
+
+  saveInv(); updateCount();
+  showSummaryScreen(added, updated);
+}
+
+function showSummaryScreen(added, updated) {
+  document.getElementById('receipt-approval-screen').style.display = 'none';
+  const summary = document.getElementById('receipt-summary-screen');
+  summary.classList.add('show');
+  haptic('success');
+
+  const total = added.length + updated.length;
+  document.getElementById('summary-title').textContent = `${total} Item${total!==1?'s':''} Added!`;
+  document.getElementById('summary-subtitle').textContent =
+    `${added.length} new • ${updated.length} updated • ${new Date().toLocaleDateString()}`;
+
+  // By location breakdown
+  const byLoc = {};
+  added.forEach(i => {
+    const key = ('📍') + ' ' + i.location;
+    byLoc[key] = (byLoc[key]||0) + 1;
+  });
+  document.getElementById('summary-location-list').innerHTML =
+    Object.entries(byLoc).map(([loc, count]) => `
+      <div class="summary-loc-row">
+        <span class="summary-loc-name">${escHtml(loc)}</span>
+        <span class="summary-loc-count">${count} item${count!==1?'s':''}</span>
+      </div>`).join('') || '<p style="color:var(--muted);font-size:.78rem">No new items added.</p>';
+
+  // Updated items
+  if (updated.length) {
+    document.getElementById('summary-updated-section').style.display = 'block';
+    document.getElementById('summary-updated-list').innerHTML = updated.map(u => `
+      <div class="summary-updated-row">
+        <span>${escHtml(u.name)}</span>
+        <span class="summary-delta"> was ${u.from} → now ${u.to}</span>
+      </div>`).join('');
+  }
+}
+
+function resetReceiptScreen() {
+  receiptItems = [];
+  receiptBase64 = '';
+  document.getElementById('receipt-capture-screen').style.display = 'block';
+  document.getElementById('receipt-process-screen').style.display = 'none';
+  document.getElementById('receipt-approval-screen').style.display = 'none';
+  document.getElementById('receipt-summary-screen').classList.remove('show');
+  document.getElementById('receipt-processing').style.display = 'block';
+  document.getElementById('receipt-preview-img').src = '';
+  checkReceiptKey();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════════════════════════════
+init();
+</script>
+
+</body>
+</html>
